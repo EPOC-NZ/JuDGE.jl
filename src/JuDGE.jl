@@ -927,9 +927,9 @@ function updateduals(master, sub_problem, node, status, iter)
         )
     else
         if iter % 2 == 0
-            oc = -10.0^10
+            oc = -Inf
         else
-            oc = 10.0^10
+            oc = Inf
         end
         for (name, var) in sub_problem.ext[:expansions]
             if typeof(var) <: AbstractArray

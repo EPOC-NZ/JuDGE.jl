@@ -229,8 +229,8 @@ Given `some_tree`, this function generates a html/js visualization of the tree.
 ### Required Arguments
 `some_tree` is the tree we wish to visualise.
 
-`data` is a dictionary of the data we wish to display, each element is another
-dictionary indexed by the nodes of the tree.
+`data` is a dictionary of the data we wish to display, each element is a dictionary
+for a node of the tree, indexed by the Symbols.
 
 ### Optional Arguments
 `scale_edges` this is the scale factor for edges as the network gets deeper.
