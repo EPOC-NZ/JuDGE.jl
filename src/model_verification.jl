@@ -114,12 +114,11 @@ end
 function get_structure_of_expansions(subproblem)
     expkeys = get_expansion_keys(subproblem)
 
+    function thinwrapper(var::AbstractArray)
+        collect(eachindex(var))
+    end
     function thinwrapper(var)
-        if typeof(var) <: AbstractArray
-            collect(eachindex(var))
-        else
-            ()
-        end
+        ()
     end
 
     return Dict(i => thinwrapper(subproblem.obj_dict[i]) for i in expkeys)
@@ -128,12 +127,11 @@ end
 function get_structure_of_shutdowns(subproblem)
     shutkeys = get_shutdown_keys(subproblem)
 
+    function thinwrapper(var::AbstractArray)
+        collect(eachindex(var))
+    end
     function thinwrapper(var)
-        if typeof(var) <: AbstractArray
-            collect(eachindex(var))
-        else
-            ()
-        end
+        ()
     end
 
     return Dict(i => thinwrapper(subproblem.obj_dict[i]) for i in shutkeys)
