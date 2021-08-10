@@ -14,8 +14,7 @@ function knapsack_advanced(
     numinvest = 6
 
     # size of tree?
-    degree = tree_size[2]
-    height = tree_size[1]
+    height, degree = tree_size
 
     totalnodes = Int((degree^(height + 1) - 1) / (degree - 1))
 
@@ -26,7 +25,6 @@ function knapsack_advanced(
             (1 - ((i - 1) / (totalnodes * 1.2)))
     end
 
-    # investvol = [40,45,50,70]
     investvol = [1, 2, 4, 8, 16, 32]
     initialcap = 0
 
