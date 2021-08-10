@@ -114,12 +114,11 @@ end
 function get_structure_of_expansions(subproblem)
     expkeys = get_expansion_keys(subproblem)
 
+    function thinwrapper(var::AbstractArray)
+        collect(eachindex(var))
+    end
     function thinwrapper(var)
-        if typeof(var) <: AbstractArray
-            collect(eachindex(var))
-        else
-            ()
-        end
+        ()
     end
 
     return Dict(i => thinwrapper(subproblem.obj_dict[i]) for i in expkeys)
@@ -128,12 +127,11 @@ end
 function get_structure_of_shutdowns(subproblem)
     shutkeys = get_shutdown_keys(subproblem)
 
+    function thinwrapper(var::AbstractArray)
+        collect(eachindex(var))
+    end
     function thinwrapper(var)
-        if typeof(var) <: AbstractArray
-            collect(eachindex(var))
-        else
-            ()
-        end
+        ()
     end
 
     return Dict(i => thinwrapper(subproblem.obj_dict[i]) for i in shutkeys)
@@ -143,7 +141,7 @@ function get_expansion_keys(model)
     filter(keys(model.obj_dict)) do key
         for (exp, var) in model.ext[:expansions]
             if var === model.obj_dict[key] &&
-               model.ext[:options][exp][1] == :expansion
+                model.ext[:options][exp][1] == :expansion
                 return true
             end
         end
@@ -155,7 +153,7 @@ function get_shutdown_keys(model)
     filter(keys(model.obj_dict)) do key
         for (exp, var) in model.ext[:expansions]
             if var === model.obj_dict[key] &&
-               model.ext[:options][exp][1] == :shutdown
+                model.ext[:options][exp][1] == :shutdown
                 return true
             end
         end
