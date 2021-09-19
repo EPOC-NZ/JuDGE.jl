@@ -87,7 +87,7 @@ function variable_branch(jmodel::JuDGEModel, inttol::Float64)
             for i in 1:length(subproblems[node].ext[:discrete_branch])
                 val = JuMP.value(master.ext[:discrete_var][node][i])
                 fractionality = min(val - floor(val), ceil(val) - val)
-                if fractionality > inttol
+                if fractionality > cutoff
                     cutoff = val
                     index = i
                 end
@@ -457,18 +457,16 @@ function branch_and_price(
                     append!(models, newmodels)
                 end
             elseif i == length(models)
+                if flag == :sp_infeasible
+                    i += 1
+                end
                 break
             else
-                if model.bounds.LB < otherLB
-                    otherLB = model.bounds.LB
-                end
+                # if model.bounds.LB < otherLB
+                #     otherLB = model.bounds.LB
+                # end
                 i += 1
             end
-        elseif i == length(models) ||
-               UB - LB <= termination.abstol ||
-               (UB - LB <= termination.reltol * abs(UB) && UB != Inf)
-            #LB=otherLB
-            break
         else
             if (
                 status != MOI.INFEASIBLE_OR_UNBOUNDED &&
@@ -479,7 +477,14 @@ function branch_and_price(
             ) && model.bounds.LB < otherLB
                 otherLB = model.bounds.LB
             end
+
             i += 1
+
+            if i - 1 == length(models) ||
+               UB - LB <= termination.abstol ||
+               (UB - LB <= termination.reltol * abs(UB) && UB != Inf)
+                break
+            end
         end
     end
     bestLB = 0
