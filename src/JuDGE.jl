@@ -143,7 +143,7 @@ function JuDGEModel(
     end
 
     nodes = collect(tree)
-    sub_problems = Dict(i => sub_problem_builder(i) for i in nodes)
+    sub_problems = Dict(i => sub_problem_builder(getID(i)) for i in nodes)
 
     if check
         @info "Checking sub-problem format"
@@ -169,6 +169,7 @@ function JuDGEModel(
         ext = Dict{Symbol,Any}()
         ext[:branches] = Branch[]
         ext[:optimizer_settings] = Dict{Symbol,Any}()
+
         return JuDGEModel(
             tree,
             master_problem,
@@ -469,7 +470,7 @@ function solve(
     current = InitialConvergenceState()
     empty!(judge.log)
     push!(judge.log, current)
-    if verbose > 0
+    if verbose > 0 && prune == Inf
         @info "Solving JuDGE model for tree: " * string(judge.tree)
         if verbose == 2
             display(termination)
@@ -522,6 +523,9 @@ function solve(
     status = termination_status(judge.master_problem)
     if status == MOI.NUMERICAL_ERROR
         println("\nMaster problem returned a MOI.NUMERICAL_ERROR")
+        for (sp, con) in b_con
+            delete(sp, con)
+        end
         return
     end
 
@@ -552,13 +556,15 @@ function solve(
             if termination_status(sp) != MOI.OPTIMAL &&
                termination_status(sp) != MOI.INTERRUPTED &&
                termination_status(sp) != MOI.TIME_LIMIT
+                if verbose == 2
+                    println("")
+                end
                 @warn(
                     "Solve for subproblem " *
                     node.name *
                     " exited with status " *
                     string(termination_status(sp))
                 )
-                println("Subproblem is infeasible or unbounded")
                 for (sp2, con) in b_con
                     delete(sp2, con)
                 end
@@ -1066,6 +1072,148 @@ function fix_expansions(jmodel::JuDGEModel)
             end
         end
     end
+end
+
+function set_policy!(
+    jmodel::JuDGEModel,
+    jmodel2::JuDGEModel,
+    mapping::Union{Symbol,Dict{AbstractTree,AbstractTree}},
+)
+    if termination_status(jmodel2.master_problem) != MOI.OPTIMAL &&
+       termination_status(jmodel2.master_problem) != MOI.INTERRUPTED &&
+       termination_status(jmodel2.master_problem) != MOI.LOCALLY_SOLVED &&
+       termination_status(jmodel2.master_problem) != MOI.INTERRUPTED
+        error("You need to first solve the model that sets the policy.")
+    end
+
+    if typeof(mapping) == Symbol
+        mode = mapping
+        mapping = Dict{AbstractTree,AbstractTree}()
+        if mode == :by_depth
+            if length(get_leafnodes(jmodel2.tree)) == 1
+                for node in collect(jmodel.tree)
+                    dpth = depth(node)
+                    for node2 in collect(jmodel2.tree)
+                        if depth(node2) == dpth
+                            mapping[node] = node2
+                            break
+                        end
+                    end
+                end
+            else
+                error("Cannot map nodes by depth since this is ambiguous.")
+            end
+        elseif mode == :by_nodeID
+            for node in collect(jmodel.tree)
+                for node2 in collect(jmodel2.tree)
+                    if getID(node) == getID(node2)
+                        mapping[node] = node2
+                        break
+                    end
+                end
+            end
+        else
+            error("Invalid mapping mode. Use ':by_depth' or ':by_nodeID'.")
+        end
+    end
+    bcs = BranchConstraint[]
+    for node in collect(jmodel.tree)
+        if !haskey(mapping, node)
+            continue
+        end
+        node2 = mapping[node]
+        for (name, var) in jmodel.master_problem.ext[:expansions][node]
+            var2 = jmodel2.master_problem.ext[:expansions][node2][name]
+            if jmodel.sub_problems[jmodel.tree].ext[:options][name][4] == :Con
+                if typeof(var) <: AbstractArray
+                    for i in eachindex(var)
+                        JuMP.fix(var[i], JuMP.value(var2[i]), force = true)
+                        val = 0.0
+                        for n in history(node)
+                            if haskey(mapping, n)
+                                v =
+                                    jmodel2.master_problem.ext[:expansions][mapping[n]][name]
+                                val += JuMP.value(v[i])
+                            end
+                        end
+                        push!(
+                            bcs,
+                            BranchConstraint(
+                                jmodel.sub_problems[node][name][i],
+                                :le,
+                                val,
+                            ),
+                            node,
+                        )
+                    end
+                elseif isa(var, VariableRef)
+                    JuMP.fix(var, JuMP.value(var2), force = true)
+                    for n in history(node)
+                        if haskey(mapping, n)
+                            v =
+                                jmodel2.master_problem.ext[:expansions][mapping[n]][name]
+                            val += JuMP.value(v)
+                        end
+                    end
+                    push!(
+                        bcs,
+                        BranchConstraint(
+                            jmodel.sub_problems[node][name],
+                            :le,
+                            val,
+                            node,
+                        ),
+                    )
+                end
+            else
+                if typeof(var) <: AbstractArray
+                    for i in eachindex(var)
+                        JuMP.fix(
+                            var[i],
+                            round(JuMP.value(var2[i])),
+                            force = true,
+                        )
+                        val = 0.0
+                        for n in history(node)
+                            if haskey(mapping, n)
+                                v =
+                                    jmodel2.master_problem.ext[:expansions][mapping[n]][name]
+                                val += round(JuMP.value(v[i]))
+                            end
+                        end
+                        push!(
+                            bcs,
+                            BranchConstraint(
+                                jmodel.sub_problems[node][name][i],
+                                :le,
+                                val,
+                                node,
+                            ),
+                        )
+                    end
+                elseif isa(var, VariableRef)
+                    JuMP.fix(var, round(JuMP.value(var2)), force = true)
+                    for n in history(node)
+                        if haskey(mapping, n)
+                            v =
+                                jmodel2.master_problem.ext[:expansions][mapping[n]][name]
+                            val += round(JuMP.value(v))
+                        end
+                    end
+                    push!(
+                        bcs,
+                        BranchConstraint(
+                            jmodel.sub_problems[node][name],
+                            :le,
+                            val,
+                            node,
+                        ),
+                    )
+                end
+            end
+        end
+    end
+    return jmodel.ext[:branches] = [Branch(bcs)]
 end
 
 function resolve_fixed(jmodel::JuDGEModel)
