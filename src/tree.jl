@@ -247,12 +247,14 @@ function visualize_tree(
     max_size::Float64 = 50.0,
     custom::Union{Nothing,Dict{Symbol,Tuple{String,String,String}}} = nothing,
     truncate::Int = -1,
+    filename::String = string(Int(round((time() * 100) % 100000))),
 )
     maxdata = Dict{Symbol,Any}()
     mindata = Dict{Symbol,Any}()
 
     function node_json(node)
         first = true
+        node = getID(node)
         for sym in keys(data[node])
             if sym == :graph_data || sym == :custom_data
                 continue
@@ -278,6 +280,19 @@ function visualize_tree(
                             mindata[sym] = data[node][sym][key]
                         elseif data[node][sym][key] > maxdata[sym]
                             maxdata[sym] = data[node][sym][key]
+                        end
+                    end
+                end
+            elseif typeof(data[node][sym]) <: Array
+                for val in data[node][sym]
+                    if sym ∉ keys(maxdata)
+                        maxdata[sym] = val
+                        mindata[sym] = val
+                    else
+                        if val < mindata[sym]
+                            mindata[sym] = val
+                        elseif val > maxdata[sym]
+                            maxdata[sym] = val
                         end
                     end
                 end
@@ -426,7 +441,7 @@ function visualize_tree(
         temp[:posY] = position[node][2]
         temp[:posX2] = position2[node][1]
         temp[:posY2] = position2[node][2]
-        temp[:data] = data[node]
+        temp[:data] = data[getID(node)]
         nodes *= JSON.json(temp)
         nodes *= ","
     end
@@ -487,8 +502,7 @@ function visualize_tree(
 
     s = read(joinpath(dirname(@__DIR__), "visualise", "visualize.html"), String)
     c = read(joinpath(dirname(@__DIR__), "visualise", "colors.js"), String)
-    filename =
-        joinpath("vis" * string(Int(round((time() * 100) % 100000))) * ".html")
+    filename = joinpath("vis_" * filename * ".html")
     file = open(filename, "w")
     s = replace(replace(s, "#DATA#" => adata), "#COLORS#" => c)
     if custom != nothing
@@ -712,10 +726,10 @@ function convert_probabilities(
 )
     function result(subtree::T where {T<:AbstractTree})
         if subtree == tree
-            return probabilities[getID(subtree)]
+            return probabilities[subtree]
         else
             parent = subtree.parent
-            return result(parent) * probabilities[getID(subtree)]
+            return result(parent) * probabilities[subtree]
         end
     end
     prob = Dict{AbstractTree,Float64}()
@@ -799,12 +813,12 @@ Given the `depth` and `degree`, this function returns an N-ary tree. Note that a
 ### Example
     tree = narytree(2,2)
 """
-function narytree(depth::Int, degree::Int)
+function narytree(depth::Int, degree::Int, prefix::String = "1")
     if depth == 0
-        return Leaf("1")
+        return Leaf(prefix)
     end
 
-    tree = Tree("1")
+    tree = Tree(prefix)
     layer = [tree]
     for dp in 1:depth
         nextlayer = AbstractTree[]
@@ -908,6 +922,29 @@ function get_scenarios(tree::AbstractTree)
     end
 
     return trees
+end
+
+function clone(tree::AbstractTree)
+    function helper(node::Tree, parent::Union{Nothing,Tree})
+        newtree = Tree(node.name)
+        newtree.ID = getID(node)
+        newtree.parent = parent
+
+        for child in node.children
+            newchild = helper(child, newtree)
+            push!(newtree.children, newchild)
+        end
+
+        return newtree
+    end
+    function helper(node::Leaf, parent::Union{Nothing,Tree})
+        newleaf = Leaf(node.name)
+        newleaf.ID = getID(node)
+        newleaf.parent = parent
+        return newleaf
+    end
+
+    return helper(tree, nothing)
 end
 
 mutable struct Node
@@ -1137,4 +1174,128 @@ function tree_from_file(filename::String)
 
     tree = groupnode(root)
     return (tree, data2)
+end
+
+function define_conditional_means!(
+    tree::AbstractTree,
+    probabilities::Dict{AbstractTree,Float64},
+    data::Dict{S,T} where {S<:AbstractTree,T<:Any},
+)
+    define_conditional_means!(tree, probabilities, [data])
+    return
+end
+
+function define_conditional_means!(
+    tree::AbstractTree,
+    probabilities::Dict{AbstractTree,Float64},
+    data::Dict{Symbol,Dict{S,T}} where {S<:AbstractTree,T<:Any},
+)
+    data_list = Vector{Dict{AbstractTree,Any}}()
+    for (s, d) in data
+        push!(data_list, d)
+    end
+
+    return define_conditional_means!(tree, probabilities, data_list)
+end
+
+function define_conditional_means!(
+    tree::AbstractTree,
+    probabilities::Dict{AbstractTree,Float64},
+    data::Vector{Dict{S,T}} where {S<:AbstractTree,T<:Any},
+)
+    for node in collect(tree)
+        if typeof(node) != Leaf && haskey(probabilities, JuDGE.getID(node))
+            for node2 in collect(node.children[end])
+                for d in data
+                    d[JuDGE.getID(node2)] =
+                        sum(
+                            d[JuDGE.getID(n)] * probabilities[JuDGE.getID(n)]
+                            for n in collect(node) if
+                            JuDGE.depth(n) == JuDGE.depth(node2) &&
+                            haskey(probabilities, JuDGE.getID(n))
+                        ) / sum(
+                            probabilities[JuDGE.getID(n)] for
+                            n in collect(node) if
+                            JuDGE.depth(n) == JuDGE.depth(node2) &&
+                            haskey(probabilities, JuDGE.getID(n))
+                        )
+                end
+            end
+        end
+    end
+    return
+end
+
+function append_expected_branches(tree::AbstractTree)
+    leafnodes = get_leafnodes(tree)
+
+    dpth = depth(leafnodes[1])
+    for i in 2:length(leafnodes)
+        if dpth != depth(leafnodes[i])
+            @error("All leaf nodes must have same depth.")
+        end
+    end
+
+    newtree = JuDGE.clone(tree)
+    nodes = collect(newtree)
+
+    for node in nodes
+        if typeof(node) != Leaf
+            expected = narytree(
+                dpth - JuDGE.depth(node) - 1,
+                1,
+                node.name * string('X'),
+            )
+            push!(node.children, expected)
+            expected.parent = node
+        end
+    end
+
+    return newtree
+end
+
+function refine_tree(
+    tree::AbstractTree,
+    probabilities::Dict{AbstractTree,Float64},
+    dpth::Int,
+)
+    newtree = JuDGE.clone(tree)
+    cond_prob = Dict{AbstractTree,Float64}()
+    for node in collect(newtree)
+        if JuDGE.depth(node) <= dpth
+            if node.parent == nothing || length(node.parent.children) == 1
+                cond_prob[node] = 1.0
+            elseif node != node.parent.children[end]
+                cond_prob[node] =
+                    probabilities[getID(node.parent)] != 0 ?
+                    probabilities[getID(node)] /
+                    probabilities[getID(node.parent)] : 0.0
+            else
+                cond_prob[node] = 0.0
+            end
+        else
+            if length(node.parent.children) == 1
+                cond_prob[node] = 1.0
+            elseif node != node.parent.children[end]
+                cond_prob[node] = 0.0
+            else
+                cond_prob[node] = 1.0
+            end
+        end
+    end
+
+    pr = convert_probabilities(newtree, cond_prob)
+    for node in collect(newtree)
+        if JuDGE.depth(node) <= dpth && typeof(node) != Leaf
+            i = 1
+            while i <= length(node.children)
+                if pr[node.children[i]] == 0.0
+                    deleteat!(node.children, i)
+                else
+                    i = i + 1
+                end
+            end
+        end
+    end
+    return newtree, pr
 end

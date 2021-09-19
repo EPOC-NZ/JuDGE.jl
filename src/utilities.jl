@@ -485,11 +485,18 @@ function add_to_dictionary!(
     add::T where {T<:Dict},
     sym::Symbol,
 )
+    no_warn = false
+    if length(keys(original)) == 0
+        no_warn = true
+    end
+
     for k in keys(add)
         if haskey(original, k)
             original[k][sym] = copy(add[k])
         else
-            @warn("Key: " * string(k) * " not in original dictionary.")
+            if !no_warn
+                @warn("Key: " * string(k) * " not in original dictionary.")
+            end
             original[k] = Dict{Symbol,Any}()
             original[k][sym] = copy(add[k])
         end
