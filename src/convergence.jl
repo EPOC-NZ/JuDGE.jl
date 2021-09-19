@@ -58,13 +58,13 @@ struct ConvergenceState
 end
 
 """
-Termination(;abstol::Float64=10^-10,
-            reltol::Float64=10^-10,
-            rlx_abstol::Float64=10^-10,
-            rlx_reltol::Float64=10^-10,
+Termination(;abstol::Float64=10^-9,
+            reltol::Float64=10^-9,
+            rlx_abstol::Float64=10^-9,
+            rlx_reltol::Float64=10^-9,
             time_limit::Float64=Inf,
             max_iter::Int=typemax(Int),
-            inttol::Float64=10^-9,
+            inttol::Float64=10^-8,
             allow_frac::Symbol=:binary_solve)
 
 Define the stopping conditions for `JuDGE.solve()` / `JuDGE.branch_and_price()`.
@@ -106,13 +106,13 @@ mutable struct Termination
     allow_frac::Symbol
 
     function Termination(;
-        abstol::Float64 = 10^-10,
-        reltol::Float64 = 10^-10,
-        rlx_abstol::Float64 = 10^-10,
-        rlx_reltol::Float64 = 10^-10,
+        abstol::Float64 = 10^-9,
+        reltol::Float64 = 10^-9,
+        rlx_abstol::Float64 = 10^-9,
+        rlx_reltol::Float64 = 10^-9,
         time_limit::Float64 = Inf,
         max_iter::Int = typemax(Int),
-        inttol::Float64 = 10^-9,
+        inttol::Float64 = 10^-8,
         allow_frac::Symbol = :binary_solve,
     )
         if allow_frac ∉ [
