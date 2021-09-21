@@ -1079,6 +1079,66 @@ function set_policy!(
     jmodel2::JuDGEModel,
     mapping::Union{Symbol,Dict{AbstractTree,AbstractTree}},
 )
+    function set_var(
+        var,
+        var2,
+        hist::Vector{AbstractTree},
+        mapping,
+        name,
+        node::AbstractTree,
+        options,
+        i::Int,
+        rounded::Bool,
+    )
+        if rounded
+            if i == 0
+                val2 = round(JuMP.value(var2))
+            else
+                val2 = round(JuMP.value(var2[i]))
+            end
+        else
+            if i == 0
+                val2 = JuMP.value(var2)
+            else
+                val2 = JuMP.value(var2[i])
+            end
+        end
+        JuMP.fix(var[i], val2, force = true)
+        val = 0.0
+        for n in hist
+            if haskey(mapping, n)
+                v = jmodel2.master_problem.ext[:expansions][mapping[n]][name]
+                if rounded
+                    if i == 0
+                        val += round(JuMP.value(v))
+                    else
+                        val += round(JuMP.value(v[i]))
+                    end
+                else
+                    if i == 0
+                        val += JuMP.value(v)
+                    else
+                        val += JuMP.value(v[i])
+                    end
+                end
+            end
+        end
+        bc = nothing
+        sp_var =
+            i == 0 ? jmodel.sub_problems[node][name] :
+            jmodel.sub_problems[node][name][i]
+
+        jmodel.sub_problems[node][name][i],
+        if options[1] == :expansion
+            bc = BranchConstraint(sp_var, :le, val, node)
+        elseif options[1] == :shutdown
+            bc = BranchConstraint(sp_var, :ge, val, node)
+        elseif options[1] == :enforced
+            bc = BranchConstraint(sp_var, :eq, val, node)
+        end
+        return bc
+    end
+
     if termination_status(jmodel2.master_problem) != MOI.OPTIMAL &&
        termination_status(jmodel2.master_problem) != MOI.INTERRUPTED &&
        termination_status(jmodel2.master_problem) != MOI.LOCALLY_SOLVED &&
@@ -1124,91 +1184,85 @@ function set_policy!(
         node2 = mapping[node]
         for (name, var) in jmodel.master_problem.ext[:expansions][node]
             var2 = jmodel2.master_problem.ext[:expansions][node2][name]
-            if jmodel.sub_problems[jmodel.tree].ext[:options][name][4] == :Con
+            options = jmodel.sub_problems[jmodel.tree].ext[:options][name]
+            interval =
+                max(
+                    1,
+                    depth(node) - options[3] - options[2] + 2,
+                ):depth(node)+1-options[2]
+            pre = history(node)
+            hist = AbstractTree[]
+            for i in interval
+                push!(hist, pre[i])
+            end
+
+            if options[4] == :Con
                 if typeof(var) <: AbstractArray
                     for i in eachindex(var)
-                        JuMP.fix(var[i], JuMP.value(var2[i]), force = true)
-                        val = 0.0
-                        for n in history(node)
-                            if haskey(mapping, n)
-                                v =
-                                    jmodel2.master_problem.ext[:expansions][mapping[n]][name]
-                                val += JuMP.value(v[i])
-                            end
-                        end
-                        push!(
-                            bcs,
-                            BranchConstraint(
-                                jmodel.sub_problems[node][name][i],
-                                :le,
-                                val,
-                            ),
+                        bc = set_var(
+                            var,
+                            var2,
+                            hist,
+                            mapping,
+                            name,
                             node,
+                            options,
+                            i,
+                            false,
                         )
+                        if bc != nothing
+                            push!(bcs, bc)
+                        end
                     end
                 elseif isa(var, VariableRef)
-                    JuMP.fix(var, JuMP.value(var2), force = true)
-                    for n in history(node)
-                        if haskey(mapping, n)
-                            v =
-                                jmodel2.master_problem.ext[:expansions][mapping[n]][name]
-                            val += JuMP.value(v)
-                        end
-                    end
-                    push!(
-                        bcs,
-                        BranchConstraint(
-                            jmodel.sub_problems[node][name],
-                            :le,
-                            val,
-                            node,
-                        ),
+                    bc = set_var(
+                        var,
+                        var2,
+                        hist,
+                        mapping,
+                        name,
+                        node,
+                        options,
+                        0,
+                        false,
                     )
+                    if bc != nothing
+                        push!(bcs, bc)
+                    end
                 end
             else
                 if typeof(var) <: AbstractArray
                     for i in eachindex(var)
-                        JuMP.fix(
-                            var[i],
-                            round(JuMP.value(var2[i])),
-                            force = true,
+                        bc = set_var(
+                            var,
+                            var2,
+                            hist,
+                            mapping,
+                            name,
+                            node,
+                            options,
+                            i,
+                            true,
                         )
-                        val = 0.0
-                        for n in history(node)
-                            if haskey(mapping, n)
-                                v =
-                                    jmodel2.master_problem.ext[:expansions][mapping[n]][name]
-                                val += round(JuMP.value(v[i]))
-                            end
+                        if bc != nothing
+                            push!(bcs, bc)
                         end
-                        push!(
-                            bcs,
-                            BranchConstraint(
-                                jmodel.sub_problems[node][name][i],
-                                :le,
-                                val,
-                                node,
-                            ),
-                        )
                     end
                 elseif isa(var, VariableRef)
-                    JuMP.fix(var, round(JuMP.value(var2)), force = true)
-                    for n in history(node)
-                        if haskey(mapping, n)
-                            v =
-                                jmodel2.master_problem.ext[:expansions][mapping[n]][name]
-                            val += round(JuMP.value(v))
-                        end
-                    end
-                    push!(
-                        bcs,
-                        BranchConstraint(
-                            jmodel.sub_problems[node][name],
-                            :le,
-                            val,
-                            node,
-                        ),
+                    bc = set_var(
+                        var,
+                        var2,
+                        hist,
+                        mapping,
+                        name,
+                        node,
+                        options,
+                        0,
+                        true,
                     )
+                    if bc != nothing
+                        push!(bcs, bc)
+                    end
                 end
             end
         end

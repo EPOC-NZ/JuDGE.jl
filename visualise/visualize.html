@@ -218,8 +218,8 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 
  	var network=null;
  	var selected=1;
- 	var chk = document.getElementById("chkLR");
- 	chk.addEventListener("change", redrawFixed);
+ 	//var chk = document.getElementById("chkLR");
+ 	//chk.addEventListener("change", redrawFixed);
  	  var svg1 = '<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" ondragover="onDragOver(event);" ondrop="onDrop(event);">content</svg>';
 
  		var colors = ['#ED8181','#81DD81','#FDA04D','#9191FD'];
@@ -827,6 +827,7 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 
 	var selected_node=1;
 	var treestyle = document.getElementById("chkLR");
+	treestyle.checked = true;
 	treestyle.addEventListener("change", fix);
 
 	drawTemplate(slider.value);

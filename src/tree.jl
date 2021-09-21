@@ -247,6 +247,7 @@ function visualize_tree(
     max_size::Float64 = 50.0,
     custom::Union{Nothing,Dict{Symbol,Tuple{String,String,String}}} = nothing,
     truncate::Int = -1,
+    rel_angle::Bool = false,
     filename::String = string(Int(round((time() * 100) % 100000))),
 )
     maxdata = Dict{Symbol,Any}()
@@ -320,7 +321,7 @@ function visualize_tree(
 
     function setpositions(
         node::AbstractTree,
-        alpha::Float64,
+        rel_angle::Bool,
         l::Float64,
         scale::Float64,
         odd::Bool,
@@ -328,19 +329,18 @@ function visualize_tree(
         if typeof(node) == Leaf
             return
         end
-        a = 0.0
+        a = -2 * pi / (length(node.children))
         current = 0.0
-        if (length(node.children) % 2) == 1
-            a = -2 * pi / (length(node.children))
-            current =
+        if rel_angle
+            current = angles[node] + pi + a / 2#0.0
+        elseif (length(node.children) % 2) == 1
+            current +=
                 pi / 2 +
                 (length(node.children) - 1) * pi / length(node.children)
         elseif odd
-            a = -2 * pi / (length(node.children))
-            current = 3 * pi / 2 - pi / length(node.children)
+            current += 3 * pi / 2 - pi / length(node.children)
         else
-            a = -2 * pi / (length(node.children))
-            current = 3 * pi / 2 - 2 * pi / length(node.children)
+            current += 3 * pi / 2 - 2 * pi / length(node.children)
         end
 
         for child in node.children
@@ -351,12 +351,12 @@ function visualize_tree(
             )
             if length(node.children) == 2
                 if odd
-                    setpositions(child, alpha, l, scale, !odd)
+                    setpositions(child, rel_angle, l, scale, !odd)
                 else
-                    setpositions(child, alpha, l * scale^2, scale, !odd)
+                    setpositions(child, rel_angle, l * scale^2, scale, !odd)
                 end
             else
-                setpositions(child, alpha, l * scale, scale, !odd)
+                setpositions(child, rel_angle, l * scale, scale, !odd)
             end
             current += a
         end
@@ -416,10 +416,10 @@ function visualize_tree(
         end
     end
 
-    angles[some_tree] = -pi / 2
+    angles[some_tree] = rel_angle ? 0.0 : -pi / 2
     position[some_tree] = (0.0, 0.0)
 
-    setpositions(some_tree, 0.5, 700.0, scale_edges, true)
+    setpositions(some_tree, rel_angle, 700.0, scale_edges, true)
     setpositions2(some_tree, 80.0)
 
     for node in collect(some_tree, truncate = truncate)

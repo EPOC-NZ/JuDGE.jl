@@ -83,11 +83,7 @@ function policy_comparison(
     sub_problems::T where {T<:Function},
 )
     height = JuDGE.depth(collect(tree)[end])
-    vis = Dict{AbstractTree,Dict{Symbol,Any}}()
-    JuDGE.add_to_dictionary!(vis, sub_problems.data[:investcost], :investcost)
-    JuDGE.add_to_dictionary!(vis, sub_problems.data[:itemvolume], :itemvolume)
-    JuDGE.add_to_dictionary!(vis, sub_problems.data[:itemcost], :itemcost)
-    JuDGE.visualize_tree(tree, vis, filename = "original")
+
     # formulates a separate JuDGEModel for each path to a leaf node
     @info("Setting up wait-and-see problems")
     WS, WS_pr = JuDGEModel(
@@ -126,7 +122,7 @@ function policy_comparison(
     JuDGE.add_to_dictionary!(vis, sub_problems.data[:investcost], :investcost)
     JuDGE.add_to_dictionary!(vis, sub_problems.data[:itemvolume], :itemvolume)
     JuDGE.add_to_dictionary!(vis, sub_problems.data[:itemcost], :itemcost)
-    JuDGE.visualize_tree(tree2, vis, filename = "augmented")
+    JuDGE.visualize_tree(tree2, vis, filename = "augmented", rel_angle = true)
 
     # code for EEV and rolling horizon
     RH = nothing
@@ -149,8 +145,13 @@ function policy_comparison(
             :itemvolume,
         )
         JuDGE.add_to_dictionary!(vis, sub_problems.data[:itemcost], :itemcost)
-        JuDGE.add_to_dictionary!(vis, pr, :probability)
-        JuDGE.visualize_tree(tree3, vis, filename = "iter" * string(iter))
+        #JuDGE.add_to_dictionary!(vis, pr, :probability)
+        JuDGE.visualize_tree(
+            tree3,
+            vis,
+            filename = "iter" * string(iter),
+            rel_angle = true,
+        )
         # in iteration 1, we can find the EEV by simulating the solution from iteration 0, in the real tree
         if iter == 1
             EEV = JuDGEModel(tree, probabilities, sub_problems, JuDGE_MP_Solver)
