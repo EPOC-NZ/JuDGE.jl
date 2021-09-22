@@ -1185,11 +1185,9 @@ function set_policy!(
         for (name, var) in jmodel.master_problem.ext[:expansions][node]
             var2 = jmodel2.master_problem.ext[:expansions][node2][name]
             options = jmodel.sub_problems[jmodel.tree].ext[:options][name]
-            interval =
-                max(
-                    1,
-                    depth(node) - options[3] - options[2] + 2,
-                ):depth(node)+1-options[2]
+            i_min = max(1, depth(node) - options[3] - options[2] + 2)
+            i_max = depth(node) + 1 - options[2]
+            interval = i_min:i_max
             pre = history(node)
             hist = AbstractTree[]
             for i in interval
