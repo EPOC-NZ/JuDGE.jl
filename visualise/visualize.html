@@ -132,15 +132,17 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
  </select>
 
  </div>
-     <script type="text/javascript">
+ <script type="text/javascript">
 	 var svgns = "http://www.w3.org/2000/svg";
 	 var container;
 	 var zoomTree;
-		 var tree;
-		 var cs_select;
- 		var slider = document.getElementById("myRange");
-     var slidervalue = document.getElementById("slidervalue");
-		 var textName=true;
+	 var tree;
+	 var cs_select;
+	 var rescaled;
+	 var highlight=0;
+	 var slider = document.getElementById("myRange");
+	 var slidervalue = document.getElementById("slidervalue");
+	 var textName=true;
  		function rgb2hsl(r,g,b) {
  			let v=Math.max(r,g,b), c=v-Math.min(r,g,b), f=(1-Math.abs(v+v-c-1));
  			let h= c && ((v==r) ? (g-b)/c : ((v==g) ? 2+(b-r)/c : 4+(r-g)/c));
@@ -555,11 +557,13 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 		if (treestyle.checked) {
 			var diff=maxY-minY;
 			var sc=1.0;
+			rescaled=false;
 			if (diff < 30*max_size) {
 				if (diff!=0) {
 					sc=Math.pow(30*max_size/diff,0.75);
 				}
 				diff = 30*max_size;
+				rescaled=true;
 			}
 
 			for (var i = 0; i < subnodes.length; i++) {
@@ -588,8 +592,8 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 
 		for (var i = 0; i < subnodes.length; i++) {
 			if (treestyle.checked) {
-				subnodes[i].circle.setAttributeNS(null, 'x', subnodes[i].X-4*min_size);
-				subnodes[i].circle.setAttributeNS(null, 'y', subnodes[i].Y-min_size);
+				subnodes[i].circle.setAttributeNS(null, 'x', subnodes[i].X-5*min_size);
+				subnodes[i].circle.setAttributeNS(null, 'y', subnodes[i].Y-1.25*min_size);
 			}
 			else {
 				subnodes[i].circle.setAttributeNS(null, 'x', subnodes[i].X-max_size*Math.pow(node_scale,nodes[i].level));
@@ -611,8 +615,8 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 			delete nodes[i].circle;
 			nodes[i].circle = document.createElementNS(svgns, 'svg');
 			if (treestyle.checked) {
-				nodes[i].circle.setAttributeNS(null, 'width', 8*min_size);
-				nodes[i].circle.setAttributeNS(null, 'height', 3*min_size);
+				nodes[i].circle.setAttributeNS(null, 'width', 10*min_size);
+				nodes[i].circle.setAttributeNS(null, 'height', 3.5*min_size);
 			}
 			else {
 				nodes[i].circle.setAttributeNS(null, 'width', 2*max_size*Math.pow(node_scale,nodes[i].level));
@@ -714,26 +718,41 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
  					}
  				}
 				circle = document.createElementNS(svgns, 'circle');
-
+				sw=0
 				if (treestyle.checked) {
-					circle.setAttributeNS(null, 'cx', 4*min_size);
-					circle.setAttributeNS(null, 'cy', min_size);
+					circle.setAttributeNS(null, 'cx', 5*min_size);
+					circle.setAttributeNS(null, 'cy', 1.25*min_size);
 					circle.setAttributeNS(null, 'r', min_size*((n-j)/n));
+					sw = 2
 				}
 				else {
 					circle.setAttributeNS(null, 'cx', max_size*Math.pow(node_scale,nodes[i].level));
 					circle.setAttributeNS(null, 'cy', max_size*Math.pow(node_scale,nodes[i].level));
-					circle.setAttributeNS(null, 'r', max_size*Math.pow(node_scale,nodes[i].level)*((n-j)/n));
+					circle.setAttributeNS(null, 'r', 0.95*max_size*Math.pow(node_scale,nodes[i].level)*((n-j)/n));
+					sw=2*Math.pow(node_scale,nodes[i].level/2)
 				}
-				circle.setAttributeNS(null, 'style', 'fill: '+dat_col[j]+'; stroke: white; stroke-width: '+(2*Math.pow(node_scale,nodes[i].level/2)).toString()+'px;' );
+
+				if (highlight==i && j==0) {
+					circle.setAttributeNS(null, 'style', 'fill: '+dat_col[j]+'; stroke: black; stroke-width: '+sw.toString()+'px;' );
+				}
+				else {
+					circle.setAttributeNS(null, 'style', 'fill: '+dat_col[j]+'; stroke: white; stroke-width: '+sw.toString()+'px;' );
+				}
 				nodes[i].circle.appendChild(circle);
 				if (j==0 && treestyle.checked) {
 					text=document.createElementNS(svgns, 'text');
-					text.setAttributeNS(null, 'x', 4*min_size);
-					text.setAttributeNS(null, 'y', 2.69*min_size);
+					if (nodes[i].leaf && !rescaled) {
+						text.setAttributeNS(null, 'x', 6.2*min_size);
+						text.setAttributeNS(null, 'y', 1.35*min_size);
+						text.setAttributeNS(null, 'text-anchor', 'left');
+					}
+					else {
+						text.setAttributeNS(null, 'x', 5*min_size);
+						text.setAttributeNS(null, 'y', 2.84*min_size);
+						text.setAttributeNS(null, 'text-anchor', 'middle');
+					}
 					text.setAttributeNS(null, 'font-size', 24);
 					text.setAttributeNS(null, 'dominant-baseline', 'middle');
-					text.setAttributeNS(null, 'text-anchor', 'middle');
 					if(textName) {
 						text.appendChild(document.createTextNode(nodes[i].label));
 					}
@@ -774,6 +793,14 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 	}
 
 	function show_details(selected) {
+		temp = nodes[highlight].circle.children[0].getAttribute("style")
+		temp = temp.replace("black","white")
+		nodes[highlight].circle.children[0].setAttributeNS(null, 'style', temp)
+		highlight=selected-1
+		temp = nodes[highlight].circle.children[0].getAttribute("style")
+		temp = temp.replace("white","black")
+		nodes[highlight].circle.children[0].setAttributeNS(null, 'style', temp)
+
 		var temp=JSON.parse(JSON.stringify(nodes[selected-1]));
 		delete temp["id"];
 		delete temp["level"];
@@ -785,6 +812,7 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 		delete temp["title"];
 		delete temp["X"];
 		delete temp["Y"];
+		delete temp["leaf"];
 
 		temp["Name"]=temp["label"];
 		delete temp["label"];
@@ -827,7 +855,7 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 
 	var selected_node=1;
 	var treestyle = document.getElementById("chkLR");
-	treestyle.checked = true;
+	treestyle.checked = #TREE_STYLE#;
 	treestyle.addEventListener("change", fix);
 
 	drawTemplate(slider.value);

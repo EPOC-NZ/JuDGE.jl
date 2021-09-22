@@ -248,6 +248,7 @@ function visualize_tree(
     custom::Union{Nothing,Dict{Symbol,Tuple{String,String,String}}} = nothing,
     truncate::Int = -1,
     rel_angle::Bool = false,
+    style::Symbol = :standard,
     filename::String = string(Int(round((time() * 100) % 100000))),
 )
     maxdata = Dict{Symbol,Any}()
@@ -420,7 +421,7 @@ function visualize_tree(
     position[some_tree] = (0.0, 0.0)
 
     setpositions(some_tree, rel_angle, 700.0, scale_edges, true)
-    setpositions2(some_tree, 80.0)
+    setpositions2(some_tree, 70.0)
 
     for node in collect(some_tree, truncate = truncate)
         get_id[node] = index
@@ -437,6 +438,8 @@ function visualize_tree(
         temp[:id] = get_id[node]
         temp[:label] = node.name
         temp[:level] = depth(node)
+        temp[:leaf] =
+            typeof(node) == Leaf || (truncate != -1 && depth(node) >= truncate)
         temp[:posX] = position[node][1]
         temp[:posY] = position[node][2]
         temp[:posX2] = position2[node][1]
@@ -502,8 +505,7 @@ function visualize_tree(
 
     s = read(joinpath(dirname(@__DIR__), "visualise", "visualize.html"), String)
     c = read(joinpath(dirname(@__DIR__), "visualise", "colors.js"), String)
-    filename = joinpath("vis_" * filename * ".html")
-    file = open(filename, "w")
+
     s = replace(replace(s, "#DATA#" => adata), "#COLORS#" => c)
     if custom != nothing
         temp = ""
@@ -546,6 +548,15 @@ function visualize_tree(
         s = replace(s, "#FUNCTION_CALLS#" => "")
         s = replace(s, "#DIVS#" => "")
     end
+    if style == :standard
+        s = replace(s, "#TREE_STYLE#" => "true")
+    elseif style == :radial
+        s = replace(s, "#TREE_STYLE#" => "false")
+    else
+        error("style must either be set to :standard or :radial")
+    end
+    filename = joinpath("vis_" * filename * ".html")
+    file = open(filename, "w")
     println(file, s)
     close(file)
 
