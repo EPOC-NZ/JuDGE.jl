@@ -48,8 +48,16 @@ function TreeC(; visualise = false)
     JuDGE.print_tree(treeC, probabilityC)
 
     if visualise
-        data[:pr_absolute] = probabilityC
-        JuDGE.visualize_tree(treeC, data, scale_edges = 0.6)
+        vis_data = Dict{AbstractTree,Dict{Symbol,Any}}()
+        JuDGE.add_to_dictionary!(vis_data, data[:pr], :pr_conditional)
+        JuDGE.add_to_dictionary!(vis_data, probabilityC, :pr_absolute)
+        JuDGE.visualize_tree(
+            treeC,
+            vis_data,
+            scale_edges = 0.9,
+            filename = "treeC",
+            rel_angle = true,
+        )
     end
 
     return probabilityC[get_node(treeC, [1, 2, 1, 1, 1])] ≈ 0.1

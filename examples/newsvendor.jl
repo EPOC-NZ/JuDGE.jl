@@ -54,7 +54,7 @@ function newsvendor(;
     if visualise
         solution = JuDGE.solution_to_dictionary(judy)
         JuDGE.add_to_dictionary!(solution, demand, :demand)
-        JuDGE.visualize_tree(mytree, solution)
+        JuDGE.visualize_tree(mytree, solution, filename = "newsvendor")
     end
 
     deteq = DetEqModel(

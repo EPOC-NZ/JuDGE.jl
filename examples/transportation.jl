@@ -247,7 +247,12 @@ function transportation(; visualise = false)
 
             solution[node][:custom_data][:graph1] = graphs
         end
-        JuDGE.visualize_tree(mytree, solution, custom = custom_plots)
+        JuDGE.visualize_tree(
+            mytree,
+            solution,
+            custom = custom_plots,
+            filename = "transport",
+        )
 
         JuDGE.write_solution_to_file(
             judy,

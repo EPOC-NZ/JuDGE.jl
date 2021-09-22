@@ -110,7 +110,13 @@ function inventory(;
             solution[leaf][:custom_data][:graph1] = graphs
         end
 
-        JuDGE.visualize_tree(mytree, solution, custom = custom_plots)
+        JuDGE.visualize_tree(
+            mytree,
+            solution,
+            custom = custom_plots,
+            style = :radial,
+            filename = "inventory",
+        )
     end
     return JuDGE.get_objval(model)
 end

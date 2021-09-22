@@ -507,7 +507,7 @@ function knapsack_delayed_investment(; CVaR = RiskNeutral())
     println("Re-solved Objective: " * string(resolve_subproblems(judy)))
 
     solution = JuDGE.solution_to_dictionary(judy)
-    JuDGE.visualize_tree(mytree, solution)
+    JuDGE.visualize_tree(mytree, solution, filename = "knapsack")
 
     deteq = DetEqModel(
         mytree,
