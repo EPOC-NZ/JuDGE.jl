@@ -208,5 +208,9 @@ function policy_comparison(
     return JuDGE.print_expansions(RH, inttol = 10e-6)
 end
 
-(tree, probabilities, sub_problems) = setup_model(389335)
-policy_comparison(tree, probabilities, sub_problems)
+function evpi_vss()
+    (tree, probabilities, sub_problems) = setup_model(389335)
+    return policy_comparison(tree, probabilities, sub_problems)
+end
+
+evpi_vss()

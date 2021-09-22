@@ -198,7 +198,7 @@ function transportation(; visualise = false)
     if visualise
         custom_plots = Dict{Symbol,Tuple{String,String,String}}()
         custom_plots[:graph1] = (
-            "<div id=\"plotly\"></div>",
+            "plotly",
             "plotly_graph",
             joinpath(@__DIR__, "plot_functions", "transportation.js"),
         )

@@ -540,13 +540,20 @@ function visualize_tree(
 
         temp = ""
         for cf in values(custom)
-            temp *= cf[1]
+            temp *= "<div id=\"" * cf[1] * "\"></div>"
         end
         s = replace(s, "#DIVS#" => temp)
+
+        temp = ""
+        for cf in values(custom)
+            temp *= "\"" * cf[1] * "\","
+        end
+        s = replace(s, "#DIV_LIST#" => temp[1:end-1])
     else
         s = replace(s, "#FUNCTIONS#" => "")
         s = replace(s, "#FUNCTION_CALLS#" => "")
         s = replace(s, "#DIVS#" => "")
+        s = replace(s, "#DIV_LIST#" => "")
     end
     if style == :standard
         s = replace(s, "#TREE_STYLE#" => "true")

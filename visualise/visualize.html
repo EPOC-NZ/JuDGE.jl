@@ -102,8 +102,40 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 		margin: 2px;
 	  }
     </style>
-	<style>
+<style>
+	.multiselect {
+	  width: 160px;
+	}
 
+	.selectBox {
+	  position: relative;
+	}
+
+	.selectBox select {
+	  width: 100%;
+	  font-weight: bold;
+	}
+
+	.overSelect {
+	  position: absolute;
+	  left: 0;
+	  right: 0;
+	  top: 0;
+	  bottom: 0;
+	}
+
+	#checkboxes {
+	  display: none;
+	  border: 1px #dadada solid;
+	}
+
+	#checkboxes label {
+	  display: block;
+	}
+
+	#checkboxes label:hover {
+	  background-color: #1e90ff;
+	}
 </style>
 
   </head>
@@ -126,7 +158,22 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 	<div class="row">
 <div class="column" id="col1"><div id="mynetwork"></div></div>
 <div class="column"><div id="slider_div"><input id="slider" type="text"></div><div id="properties" class="root"></div></div>
-<div class="column">#DIVS#</div>
+<div class="column">
+	<div class="multiselect" id="filter_vis">
+	    <div class="selectBox" onclick="toggleCheckboxes()">
+	      <select>
+	        <option>Filter visualisations</option>
+	      </select>
+	      <div class="overSelect"></div>
+	    </div>
+	    <div id="checkboxes">
+		  <br style="line-height: 4px" />
+		  <div id="list_custom"></div>
+			<br style="line-height: 4px" />
+			<button type='button' onclick="confirmCheckboxes()">Confirm</button>
+			</div>
+	  </div>
+	#DIVS#</div>
 </div>
 
  </select>
@@ -140,6 +187,7 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 	 var cs_select;
 	 var rescaled;
 	 var highlight=0;
+	 var div_list=[#DIV_LIST#];
 	 var slider = document.getElementById("myRange");
 	 var slidervalue = document.getElementById("slidervalue");
 	 var textName=true;
@@ -234,6 +282,36 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 		var to_value = [1,1,1,1];
 		var min_value = [0,0,0,0];
 		var max_value = [1,1,1,1];
+
+		var expanded = false;
+
+		function toggleCheckboxes() {
+		  var checkboxes = document.getElementById("checkboxes");
+		  if (!expanded) {
+		    checkboxes.style.display = "block";
+		    expanded = true;
+		  } else {
+		    checkboxes.style.display = "none";
+		    expanded = false;
+		  }
+		}
+
+		function confirmCheckboxes() {
+		  var checkboxes = document.getElementById("checkboxes");
+		  checkboxes.style.display = "none";
+		  expanded = false;
+			for (d in div_list) {
+				c = document.getElementById("custom_chk_"+d);
+				custom_div = document.getElementById(div_list[d]);
+				if (c.checked) {
+					custom_div.style.display = "block";
+				}
+				else {
+					custom_div.style.display = "none";
+				}
+			}
+		}
+
  		function makeSegment2(i, n, color) {
  			if (color==null) {
  				color='#EEEEEE';
@@ -460,7 +538,6 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 			block.appendChild(grad);
  			element.appendChild(block);
  		}
-
  	}
 
 	function setup_positions(selected) {
@@ -852,6 +929,19 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 		setup_positions(selected_node);
 	}
 
+	function create_custom_dropdown() {
+		cb = document.getElementById("list_custom")
+		for(d in div_list) {
+			var l = document.createElement("label");
+			var c = document.createElement("input");
+			c.setAttribute("type", "checkbox");
+			c.id = "custom_chk_"+d;
+			c.checked=true;
+			l.appendChild(c);
+			l.innerHTML += div_list[d];
+			cb.appendChild(l);
+		}
+	}
 
 	var selected_node=1;
 	var treestyle = document.getElementById("chkLR");
@@ -861,10 +951,16 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 	drawTemplate(slider.value);
 	setup_positions(1);
 	show_details(1);
-
+	create_custom_dropdown();
 	slider_div=document.getElementById("slider_div")
 	slider_div.style.display="none";
-
+	for(d in div_list) {
+		c = document.getElementById("custom_chk_"+d);
+		c.checked=true;
+	}
+	if (div_list.length<=1) {
+		document.getElementById("filter_vis").style.display="none";
+	}
      </script>
    </body>
  </html>
