@@ -249,6 +249,7 @@ function visualize_tree(
     truncate::Int = -1,
     rel_angle::Bool = false,
     style::Symbol = :standard,
+    box_size::Int = 800,
     filename::String = string(Int(round((time() * 100) % 100000))),
 )
     maxdata = Dict{Symbol,Any}()
@@ -562,6 +563,7 @@ function visualize_tree(
     else
         error("style must either be set to :standard or :radial")
     end
+    s = replace(s, "#BOXSIZE#" => box_size)
     filename = joinpath("vis_" * filename * ".html")
     file = open(filename, "w")
     println(file, s)

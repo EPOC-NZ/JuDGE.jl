@@ -74,8 +74,8 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 		    border-width: 5px 0 5px 6px;
 		    border-color: transparent transparent transparent #808080; }
       #mynetwork {
-        width: 800px;
-        height: 800px;
+        width: #BOXSIZE#px;
+        height: #BOXSIZE#px;
 		border: 2px solid black;
       }
 	  .column {
@@ -186,7 +186,7 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 	 var tree;
 	 var cs_select;
 	 var rescaled;
-	 var highlight=0;
+	 var highlight=-1;
 	 var div_list=[#DIV_LIST#];
 	 var slider = document.getElementById("myRange");
 	 var slidervalue = document.getElementById("slidervalue");
@@ -282,7 +282,7 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 		var to_value = [1,1,1,1];
 		var min_value = [0,0,0,0];
 		var max_value = [1,1,1,1];
-
+		var pan = [0,0];
 		var expanded = false;
 
 		function toggleCheckboxes() {
@@ -545,10 +545,12 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 		var col1=document.getElementById("col1");
 		col1.innerHTML='';
 		container = document.createElementNS(svgns, "svg");
-		container.setAttribute ("width", "800" );
-		container.setAttribute ("height", "800" );
+		container.setAttribute ("width", "#BOXSIZE#" );
+		container.setAttribute ("height", "#BOXSIZE#" );
 		container.setAttributeNS(null, 'style', 'padding: 0px; border: 2px solid black;' );
 		container.addEventListener('wheel', evt => evt.preventDefault());
+		container.setAttributeNS(null, 'onclick',"show_details(0)");
+		container.setAttributeNS(null, 'ondblclick',"setup_positions(1)");
 		col1.appendChild(container);
 
 		chooseTree();
@@ -673,8 +675,8 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 				subnodes[i].circle.setAttributeNS(null, 'y', subnodes[i].Y-1.25*min_size);
 			}
 			else {
-				subnodes[i].circle.setAttributeNS(null, 'x', subnodes[i].X-max_size*Math.pow(node_scale,nodes[i].level));
-				subnodes[i].circle.setAttributeNS(null, 'y', subnodes[i].Y-max_size*Math.pow(node_scale,nodes[i].level));
+				subnodes[i].circle.setAttributeNS(null, 'x', subnodes[i].X-1.1*max_size*Math.pow(node_scale,nodes[i].level));
+				subnodes[i].circle.setAttributeNS(null, 'y', subnodes[i].Y-1.1*max_size*Math.pow(node_scale,nodes[i].level));
 			}
 			container.appendChild(subnodes[i].circle);
 		}
@@ -684,6 +686,8 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 		delete zoomTree
 		zoomTree = svgPanZoom(container, {zoomScaleSensitivity: 0.3,preventMouseEventsDefault: false, dblClickZoomEnabled: false});
 		zoomTree.zoomBy(0.88)
+		pan[0]=-1;
+		pan[1]=-1;
 	}
 
 	function createNodes()
@@ -696,12 +700,12 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 				nodes[i].circle.setAttributeNS(null, 'height', 3.5*min_size);
 			}
 			else {
-				nodes[i].circle.setAttributeNS(null, 'width', 2*max_size*Math.pow(node_scale,nodes[i].level));
-				nodes[i].circle.setAttributeNS(null, 'height', 2*max_size*Math.pow(node_scale,nodes[i].level));
+				nodes[i].circle.setAttributeNS(null, 'width', 2.2*max_size*Math.pow(node_scale,nodes[i].level));
+				nodes[i].circle.setAttributeNS(null, 'height', 2.2*max_size*Math.pow(node_scale,nodes[i].level));
 			}
 			nodes[i].circle.setAttributeNS(null, 'cursor','pointer');
-			nodes[i].circle.setAttributeNS(null, 'ondblclick',"setup_positions("+(i+1).toString()+")");
-			nodes[i].circle.setAttributeNS(null, 'onclick',"show_details("+(i+1).toString()+")");
+			nodes[i].circle.setAttributeNS(null, 'ondblclick',"event.stopPropagation();setup_positions("+(i+1).toString()+")");
+			nodes[i].circle.setAttributeNS(null, 'onclick',"event.stopPropagation();show_details("+(i+1).toString()+")");
 		}
 	}
  	  function set_colors(reset) {
@@ -768,49 +772,63 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
     		nodes[i].circle.removeChild(nodes[i].circle.lastChild);
 			}
 
- 			for (var j=0;j<n;j++) {
+ 			for (var j=-1;j<n;j++) {
 				var subtext='';
  				element = document.getElementById("select"+j.toString());
- 				ct=element.options[element.selectedIndex].text;
-				dat_col[j]=rgb2hex(colorTemplates[ct].NA);
-				if (data_keys[j]!='') {
- 					if (data_keys[j] in nodes[i].data) {
- 						nodes[i].title+='\n';
- 						if (Object.keys(nodes[i].data[data_keys[j]]).length==0) {
- 							dat_col[j]=rgb2hex(convert2color(colorTemplates[ct],nodes[i].data[data_keys[j]],from_value[j],to_value[j]));
- 							if (nodes[i].data[data_keys[j]]!=null) {
-								subtext=formatNumber(nodes[i].data[data_keys[j]],6);
- 								nodes[i].title+=data_keys[j]+': '+subtext;
- 							}
- 						}
- 						else {
- 							select_key=document.getElementById("select_key"+j.toString());
- 							key=select_key[select_key.selectedIndex].text;
- 							dat_col[j]=rgb2hex(convert2color(colorTemplates[ct],nodes[i].data[data_keys[j]][key],from_value[j],to_value[j]));
- 							if (nodes[i].data[data_keys[j]][key]!=null) {
-								subtext=formatNumber(nodes[i].data[data_keys[j]][key],6);
- 								nodes[i].title+=data_keys[j]+'('+key+'): '+subtext;
- 							}
- 						}
- 					}
- 				}
+				if(j>=0) {
+	 				ct=element.options[element.selectedIndex].text;
+					dat_col[j]=rgb2hex(colorTemplates[ct].NA);
+					if (data_keys[j]!='') {
+	 					if (data_keys[j] in nodes[i].data) {
+	 						nodes[i].title+='\n';
+	 						if (Object.keys(nodes[i].data[data_keys[j]]).length==0) {
+	 							dat_col[j]=rgb2hex(convert2color(colorTemplates[ct],nodes[i].data[data_keys[j]],from_value[j],to_value[j]));
+	 							if (nodes[i].data[data_keys[j]]!=null) {
+									subtext=formatNumber(nodes[i].data[data_keys[j]],6);
+	 								nodes[i].title+=data_keys[j]+': '+subtext;
+	 							}
+	 						}
+	 						else {
+	 							select_key=document.getElementById("select_key"+j.toString());
+	 							key=select_key[select_key.selectedIndex].text;
+	 							dat_col[j]=rgb2hex(convert2color(colorTemplates[ct],nodes[i].data[data_keys[j]][key],from_value[j],to_value[j]));
+	 							if (nodes[i].data[data_keys[j]][key]!=null) {
+									subtext=formatNumber(nodes[i].data[data_keys[j]][key],6);
+	 								nodes[i].title+=data_keys[j]+'('+key+'): '+subtext;
+	 							}
+	 						}
+	 					}
+	 				}
+				}
 				circle = document.createElementNS(svgns, 'circle');
 				sw=0
 				if (treestyle.checked) {
 					circle.setAttributeNS(null, 'cx', 5*min_size);
 					circle.setAttributeNS(null, 'cy', 1.25*min_size);
-					circle.setAttributeNS(null, 'r', min_size*((n-j)/n));
+					if(j==-1) {
+						r_ = min_size;
+					}
+					else {
+						r_ = min_size*((n-j)/n);
+					}
+					circle.setAttributeNS(null, 'r', r_);
 					sw = 2
 				}
 				else {
-					circle.setAttributeNS(null, 'cx', max_size*Math.pow(node_scale,nodes[i].level));
-					circle.setAttributeNS(null, 'cy', max_size*Math.pow(node_scale,nodes[i].level));
-					circle.setAttributeNS(null, 'r', 0.95*max_size*Math.pow(node_scale,nodes[i].level)*((n-j)/n));
-					sw=2*Math.pow(node_scale,nodes[i].level/2)
+					circle.setAttributeNS(null, 'cx', 1.1*max_size*Math.pow(node_scale,nodes[i].level));
+					circle.setAttributeNS(null, 'cy', 1.1*max_size*Math.pow(node_scale,nodes[i].level));
+					if(j==-1) {
+						r_ = max_size*Math.pow(node_scale,nodes[i].level);
+					}
+					else {
+						r_ = max_size*Math.pow(node_scale,nodes[i].level)*((n-j)/n);
+					}
+					circle.setAttributeNS(null, 'r', r_);
+					sw=3*Math.pow(node_scale,nodes[i].level/2)
 				}
 
-				if (highlight==i && j==0) {
-					circle.setAttributeNS(null, 'style', 'fill: '+dat_col[j]+'; stroke: black; stroke-width: '+sw.toString()+'px;' );
+				if (j==-1) {
+					circle.setAttributeNS(null, 'style', 'fill: black; stroke: black; stroke-width: '+(sw/2).toString()+'px;' );
 				}
 				else {
 					circle.setAttributeNS(null, 'style', 'fill: '+dat_col[j]+'; stroke: white; stroke-width: '+sw.toString()+'px;' );
@@ -825,7 +843,7 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 					}
 					else {
 						text.setAttributeNS(null, 'x', 5*min_size);
-						text.setAttributeNS(null, 'y', 2.84*min_size);
+						text.setAttributeNS(null, 'y', 2.9*min_size);
 						text.setAttributeNS(null, 'text-anchor', 'middle');
 					}
 					text.setAttributeNS(null, 'font-size', 24);
@@ -870,44 +888,72 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 	}
 
 	function show_details(selected) {
-		temp = nodes[highlight].circle.children[0].getAttribute("style")
-		temp = temp.replace("black","white")
-		nodes[highlight].circle.children[0].setAttributeNS(null, 'style', temp)
-		highlight=selected-1
-		temp = nodes[highlight].circle.children[0].getAttribute("style")
-		temp = temp.replace("white","black")
-		nodes[highlight].circle.children[0].setAttributeNS(null, 'style', temp)
-
-		var temp=JSON.parse(JSON.stringify(nodes[selected-1]));
-		delete temp["id"];
-		delete temp["level"];
-		delete temp["posX"];
-		delete temp["posY"];
-		delete temp["posX2"];
-		delete temp["posY2"];
-		delete temp["circle"];
-		delete temp["title"];
-		delete temp["X"];
-		delete temp["Y"];
-		delete temp["leaf"];
-
-		temp["Name"]=temp["label"];
-		delete temp["label"];
-
-		for ( obj in temp["data"]){
-			temp[obj]=temp["data"][obj];
+		if(selected>0 || (pan[0]==-1 && pan[1]==-1)) {
+			pan[0]=container.children[0].transform.baseVal[0].matrix.e;
+			pan[1]=container.children[0].transform.baseVal[0].matrix.f;
 		}
-		delete temp["data"];
 
-		tree = JsonView.createTree(temp);
+		if(container.children[0].transform.baseVal[0].matrix.e!=pan[0] || container.children[0].transform.baseVal[0].matrix.f!=pan[1]) {
+			pan[0]=container.children[0].transform.baseVal[0].matrix.e;
+			pan[1]=container.children[0].transform.baseVal[0].matrix.f;
+			return;
+		}
 
-		// render tree into dom element
-		document.getElementById("properties").innerHTML="";
-		JsonView.render(tree, document.querySelector('.root'));
-		//JsonView.expandChildren(tree);
-		JsonView.toggleNode(tree);
+		if(highlight>=0) {
+			nodes[highlight].circle.children[0].style.stroke="white";
+			temp=nodes[highlight].circle.children[0].style.strokeWidth;
+			width=parseFloat(temp.substr(0,temp.length-2));
+			nodes[highlight].circle.children[0].style.strokeWidth=(width/6).toString()+"px";
+	  }
+		if(selected>=1) {
+			highlight=selected-1;
+			nodes[highlight].circle.children[0].style.stroke="black"
+			temp=nodes[highlight].circle.children[0].style.strokeWidth;
+			width=parseFloat(temp.substr(0,temp.length-2));
+			nodes[highlight].circle.children[0].style.strokeWidth=(width*6).toString()+"px";
 
-		#FUNCTION_CALLS#
+			var temp=JSON.parse(JSON.stringify(nodes[selected-1]));
+			delete temp["id"];
+			delete temp["level"];
+			delete temp["posX"];
+			delete temp["posY"];
+			delete temp["posX2"];
+			delete temp["posY2"];
+			delete temp["circle"];
+			delete temp["title"];
+			delete temp["X"];
+			delete temp["Y"];
+			delete temp["leaf"];
+
+			temp["Name"]=temp["label"];
+			delete temp["label"];
+
+			for ( obj in temp["data"]){
+				temp[obj]=temp["data"][obj];
+			}
+			delete temp["data"];
+
+			tree = JsonView.createTree(temp);
+
+			// render tree into dom element
+			document.getElementById("properties").innerHTML="";
+			JsonView.render(tree, document.querySelector('.root'));
+			//JsonView.expandChildren(tree);
+			JsonView.toggleNode(tree);
+			confirmCheckboxes();
+			prop = document.getElementById("properties");
+	    prop.style.display = "block";
+			#FUNCTION_CALLS#
+		}
+		else {
+			highlight=-1
+			for (d in div_list) {
+				custom_div = document.getElementById(div_list[d]);
+				custom_div.style.display = "none";
+			}
+			prop = document.getElementById("properties");
+	    prop.style.display = "none";
+		}
 	}
 
 	function chooseTree() {
@@ -950,7 +996,6 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 
 	drawTemplate(slider.value);
 	setup_positions(1);
-	show_details(1);
 	create_custom_dropdown();
 	slider_div=document.getElementById("slider_div")
 	slider_div.style.display="none";

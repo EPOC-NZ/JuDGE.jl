@@ -354,7 +354,7 @@ function write_solution_to_file(deteq::DetEqModel, filename::String)
     end
     file = open(filename, "w")
 
-    println(file, "node,variable,index,value")
+    println(file, "node,value,variable,indices")
 
     for node in collect(deteq.tree)
         for (x, var) in deteq.problem.ext[:vars][node]
@@ -365,20 +365,22 @@ function write_solution_to_file(deteq::DetEqModel, filename::String)
                         file,
                         string(node.name) *
                         "," *
+                        string(JuMP.value(var)) *
+                        "," *
                         ss[1] *
-                        ",," *
-                        string(JuMP.value(var)),
+                        ",,",
                     )
                 else
                     println(
                         file,
                         string(node.name) *
                         "," *
+                        string(JuMP.value(var)) *
+                        "," *
                         ss[1] *
-                        ",\"" *
+                        "," *
                         ss[2][1:end-1] *
-                        "\"," *
-                        string(JuMP.value(var)),
+                        ",",
                     )
                 end
             elseif typeof(var) <: AbstractArray
@@ -388,11 +390,12 @@ function write_solution_to_file(deteq::DetEqModel, filename::String)
                         file,
                         string(node.name) *
                         "," *
+                        string(JuMP.value(var[i])) *
+                        "," *
                         ss[1] *
-                        "_master,\"" *
+                        "," *
                         ss[2][1:end-1] *
-                        "\"," *
-                        string(JuMP.value(var[i])),
+                        ",",
                     )
                     #println(file,string(node.name)*",\""*string(var[i])*"\","*string(JuMP.value(var[i])))
                 end
@@ -410,23 +413,25 @@ function write_solution_to_file(deteq::DetEqModel, filename::String)
                         file,
                         string(node.name) *
                         "," *
+                        string(JuMP.value(var)) *
+                        "," *
                         ss[1] *
-                        "_master,," *
-                        string(JuMP.value(var)),
+                        "_master,",
                     )
                 else
                     println(
                         file,
                         string(node.name) *
                         "," *
+                        string(JuMP.value(var)) *
+                        "," *
                         ss[1] *
-                        "_master,\"" *
+                        "_master," *
                         ss[2][1:end-1] *
-                        "\"," *
-                        string(JuMP.value(var)),
+                        ",",
                     )
                 end
-            elseif typeof(var) == Dict{Any,Any}
+            elseif typeof(var) <: Dict
                 for i in eachindex(var)
                     name = deteq.problem.ext[:master_names][node][x][i]
                     ss = split(string(name), '[')
@@ -434,11 +439,12 @@ function write_solution_to_file(deteq::DetEqModel, filename::String)
                         file,
                         string(node.name) *
                         "," *
+                        string(JuMP.value(var[i])) *
+                        "," *
                         ss[1] *
-                        "_master,\"" *
+                        "_master," *
                         ss[2][1:end-1] *
-                        "\"," *
-                        string(JuMP.value(var[i])),
+                        ",",
                     )
                     #println(file,string(node.name)*",\""*name*"_master\","*string(JuMP.value(var[i])))
                 end
@@ -452,8 +458,9 @@ function write_solution_to_file(deteq::DetEqModel, filename::String)
             println(
                 file,
                 string(node.name) *
-                ",\"scenario_obj\",," *
-                string(JuMP.value(var)),
+                "," *
+                string(JuMP.value(var)) *
+                ",scenario_obj,,",
             )
         end
     end
@@ -481,16 +488,19 @@ function write_solution_to_file(jmodel::JuDGEModel, filename::String)
             if i == nothing
                 temp = temp * ","
             else
-                temp = temp[1:i-1] * ",\"" * temp[i+1:length(temp)-1] * "\""
+                args = temp[i+1:length(temp)-1]
+                args = replace(args, "\"" => "")
+                args = replace(args, ", " => ";")
+                temp = temp[1:i-1] * "," * args * ""
             end
             if temp != ""
                 println(
                     file,
                     string(node.name) *
                     "," *
-                    temp *
+                    string(JuMP.value(v)) *
                     "," *
-                    string(JuMP.value(v)),
+                    temp,
                 )
             end
         end
@@ -502,7 +512,13 @@ function write_solution_to_file(jmodel::JuDGEModel, filename::String)
                     val = val.data
                 end
                 for key in keys(val)
-                    temp = node.name * "," * string(x) * "_master,\""
+                    temp =
+                        node.name *
+                        "," *
+                        string(val[key]) *
+                        "," *
+                        string(x) *
+                        "_master,"
                     if typeof(val) <: Array
                         strkey = string(key)
                         strkey = replace(strkey, "CartesianIndex(" => "")
@@ -516,12 +532,14 @@ function write_solution_to_file(jmodel::JuDGEModel, filename::String)
                         strkey = replace(strkey, ", " => ",")
                         temp *= strkey
                     else
-                        for i in 1:length(val.axes)-1
-                            temp *= string(key[i]) * ","
+                        for i in 1:length(val.axes)
+                            strkey = string(key[i])
+                            strkey = replace(strkey, "\"" => "")
+                            strkey = replace(strkey, ", " => ";")
+                            temp *= string(strkey) * ","
                         end
-                        temp *= string(key[length(val.axes)])
+                        temp = temp[1:end-1]
                     end
-                    temp *= "\"," * string(val[key])
                     println(file, temp)
                 end
             else
@@ -529,9 +547,9 @@ function write_solution_to_file(jmodel::JuDGEModel, filename::String)
                     file,
                     node.name *
                     "," *
+                    string(JuMP.value(var)) *
                     string(x) *
-                    "_master,," *
-                    string(JuMP.value(var)),
+                    "_master,",
                 )
             end
         end
@@ -544,12 +562,13 @@ function write_solution_to_file(jmodel::JuDGEModel, filename::String)
             println(
                 file,
                 node.name *
-                ",scenario_obj,," *
+                "," *
                 string(
                     JuMP.value(
                         jmodel.master_problem.ext[:scenprofit_var][node],
                     ),
-                ),
+                ) *
+                ",scenario_obj,",
             )
         end
     end
@@ -561,7 +580,7 @@ function write_solution_to_file(jmodel::JuDGEModel, filename::String)
     end
 
     file = open(filename, "w")
-    println(file, "node,variable,index,value")
+    println(file, "node,value,variable,indices")
     helper(jmodel, jmodel.tree, file)
 
     return close(file)
