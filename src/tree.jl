@@ -545,7 +545,7 @@ function visualize_tree(
         end
         s = replace(s, "#DIVS#" => temp)
 
-        temp = ""
+        temp = "\"properties\","
         for cf in values(custom)
             temp *= "\"" * cf[1] * "\","
         end

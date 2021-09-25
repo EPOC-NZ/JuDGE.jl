@@ -73,38 +73,52 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 		  .json-container .fa-caret-right {
 		    border-width: 5px 0 5px 6px;
 		    border-color: transparent transparent transparent #808080; }
-      #mynetwork {
-        width: #BOXSIZE#px;
-        height: #BOXSIZE#px;
-		border: 2px solid black;
-      }
+    #mynetwork {
+      width: #BOXSIZE#px;
+      height: #BOXSIZE#px;
+			border: 2px solid black;
+    }
 	  .column {
-		float: left;
-		padding: 2px;
+			float: left;
+			padding: 2px;
 	  }
 
 	  .row:after {
-		content: "";
-		display: table;
-		clear: both;
+			content: "";
+			display: table;
+			clear: both;
 	  }
 
 	  .mystyle {
-        color:black;
-		background: #EEEEEE;
-		padding: 3px;
-		margin: 2px;
-		cursor: pointer;
-		border: 1px solid #AAAAAA;
-      }
+    	color:black;
+			background: #EEEEEE;
+			padding: 3px;
+			margin: 2px;
+			cursor: pointer;
+			border: 1px solid #AAAAAA;
+    }
 	  .colorgroup {
 	    padding: 3px;
-		margin: 2px;
+		  margin: 2px;
 	  }
     </style>
 <style>
 	.multiselect {
-	  width: 160px;
+	  width: 200px;
+	}
+
+	label {
+		padding-left: 0px;
+		text-indent: -15px;
+		position: relative;
+		top: -1.5px;
+	}
+
+	.chklabel {
+		padding-left: 0px;
+		text-indent: -15px;
+		position: relative;
+		top: -1.5px;
 	}
 
 	.selectBox {
@@ -113,7 +127,6 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 
 	.selectBox select {
 	  width: 100%;
-	  font-weight: bold;
 	}
 
 	.overSelect {
@@ -130,7 +143,11 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 	}
 
 	#checkboxes label {
-	  display: block;
+		display: block;
+		padding-left: 0px;
+		text-indent: 0px;
+		position: relative;
+		top: -1.5px;
 	}
 
 	#checkboxes label:hover {
@@ -142,38 +159,41 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 
 	<body>
      <h2>JuDGE: Visualize Tree</h2>
-     <div width="100%">
- 	<div width="100px">
-   <input type="checkbox" id="chkLR"><label for="chkLR">Standard Tree</label></br>
-      <input type="range" min="1" max="4" value="1" id="myRange"/>
+
+ 	<div class="row" width="100px">
+   <div class="column"><input type="checkbox" id="chkLR"><label for="chkLR">Standard Tree</label></div>
+	 <div class="column"></div>
+	 <div class="column"><div class="multiselect" id="filter_vis">
+	 		<div class="selectBox" onclick="toggleCheckboxes()">
+	 			<select>
+	 				<option>Filter data / visualisations</option>
+	 			</select>
+	 			<div class="overSelect"></div>
+	 		</div>
+	 		<div id="checkboxes">
+	 		<br style="line-height: 1px" />
+	 		<div id="list_custom"></div>
+	 		<br style="line-height: 1px" />
+	 		<button type='button' onclick="confirmCheckboxes()">Confirm</button>
+	 		</div>
+	 	</div></div>
+		<div class="column"></div>
+      <div class="column"><input type="range" min="1" max="7" value="1" id="myRange"/></div>
+			<div class="column">
+			<button id="download" onclick="downloadSVG()">Download SVG</button></div>
    </div>
-   <span>Number of attributes to visualise: <span id="slidervalue">1</span>
-   </div>
+
      <div class="row">
  	<div class="column" id="symbol"></div>
- 	<div class="column" id="ColorScales"></div>
+	<div class="column">
+ 		<div class="row" id="ColorScales"></div>
+		<div id="slider_div" class="row"><input id="slider" type="text"/></div>
+	</div>
  	</div>
-	<div id="grad"></div>
- 	<br/>
 	<div class="row">
 <div class="column" id="col1"><div id="mynetwork"></div></div>
-<div class="column"><div id="slider_div"><input id="slider" type="text"></div><div id="properties" class="root"></div></div>
-<div class="column">
-	<div class="multiselect" id="filter_vis">
-	    <div class="selectBox" onclick="toggleCheckboxes()">
-	      <select>
-	        <option>Filter visualisations</option>
-	      </select>
-	      <div class="overSelect"></div>
-	    </div>
-	    <div id="checkboxes">
-		  <br style="line-height: 4px" />
-		  <div id="list_custom"></div>
-			<br style="line-height: 4px" />
-			<button type='button' onclick="confirmCheckboxes()">Confirm</button>
-			</div>
-	  </div>
-	#DIVS#</div>
+<div class="column"><div id="properties" class="root"></div></div>
+<div class="column">#DIVS#</div>
 </div>
 
  </select>
@@ -189,8 +209,21 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 	 var highlight=-1;
 	 var div_list=[#DIV_LIST#];
 	 var slider = document.getElementById("myRange");
-	 var slidervalue = document.getElementById("slidervalue");
 	 var textName=true;
+
+	 function downloadSVG() {
+ 		var svg = container.cloneNode(true);
+ 		svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+ 		svg.setAttribute('onclick','');
+ 		svg.setAttribute('ondblclick','');
+ 		const blob = new Blob([svg.outerHTML.toString()]);
+ 		const element = document.createElement("a");
+ 		element.download = "JuDGEoutput.svg";
+ 		element.href = window.URL.createObjectURL(blob);
+ 		element.click();
+ 		element.remove();
+ 	}
+
  		function rgb2hsl(r,g,b) {
  			let v=Math.max(r,g,b), c=v-Math.min(r,g,b), f=(1-Math.abs(v+v-c-1));
  			let h= c && ((v==r) ? (g-b)/c : ((v==g) ? 2+(b-r)/c : 4+(r-g)/c));
@@ -258,18 +291,18 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
  		}
 
  		slider.oninput = function() {
- 			slidervalue.innerHTML = this.value;
  			for (var i=0;i<8;i++) {
  				data_keys[i]='';
  			}
+			highlight=-1;
  			drawTemplate(this.value);
+			show_details(selected)
  			redrawFixed();
          }
 
- 	var network=null;
- 	var selected=1;
- 	//var chk = document.getElementById("chkLR");
- 	//chk.addEventListener("change", redrawFixed);
+		var network=null;
+		var selected=1;
+
  	  var svg1 = '<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" ondragover="onDragOver(event);" ondrop="onDrop(event);">content</svg>';
 
  		var colors = ['#ED8181','#81DD81','#FDA04D','#9191FD'];
@@ -312,12 +345,71 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 			}
 		}
 
+		function makeSegment(i,n,cx,cy,r_) {
+			if ((n==1 && i==0) || i==-1) {
+				segment = document.createElementNS(svgns, 'circle');
+				segment.setAttributeNS(null, 'cx', cx);
+				segment.setAttributeNS(null, 'cy', cy);
+				segment.setAttributeNS(null, 'r', r_);
+				return segment;
+			}
+			else if (i<n) {
+				segment = document.createElementNS(svgns, 'path');
+				var a=cx+r_*Math.cos(2*Math.PI/n*(i-0.5))
+				var b=cy+r_*Math.sin(2*Math.PI/n*(i-0.5))
+
+				var c=cx+r_*Math.cos(2*Math.PI/n*(i-1.5))
+				var d=cy+r_*Math.sin(2*Math.PI/n*(i-1.5))
+
+				var e = 'M' +	a.toString() + ',' +b.toString() +	'A' + r_.toString() +
+					',' + r_.toString() +' 0 0,0 ' + c.toString() + ',' + d.toString() +
+					' L ' + cx.toString() + ' ' + cy.toString() + ' z';
+
+				segment.setAttributeNS(null, 'd', e);
+				return segment;
+			}
+		}
+
+		function makeSegment3(i,n,cx,cy,r_) {
+
+			if ((n==1 && i==0) || (n==2 && i==0) || i==-1) {
+				segment = document.createElementNS(svgns, 'circle');
+				segment.setAttributeNS(null, 'cx', cx);
+				segment.setAttributeNS(null, 'cy', cy);
+				segment.setAttributeNS(null, 'r', r_);
+				return segment;
+			}
+			else if (i<n-1) {
+				segment = document.createElementNS(svgns, 'path');
+				var a=cx+r_*Math.cos(2*Math.PI/(n-1)*(i-0.5))
+				var b=cy+r_*Math.sin(2*Math.PI/(n-1)*(i-0.5))
+
+				var c=cx+r_*Math.cos(2*Math.PI/(n-1)*(i-1.5))
+				var d=cy+r_*Math.sin(2*Math.PI/(n-1)*(i-1.5))
+
+				var e = 'M' +	a.toString() + ',' +b.toString() +	'A' + r_.toString() +
+					',' + r_.toString() +' 0 0,0 ' + c.toString() + ',' + d.toString() +
+					' L ' + cx.toString() + ' ' + cy.toString() + ' z';
+
+				segment.setAttributeNS(null, 'd', e);
+				return segment;
+			}
+			else {
+				cr=r_/Math.sqrt(i+1.5);
+				segment = document.createElementNS(svgns, 'circle');
+				segment.setAttributeNS(null, 'cx', cx);
+				segment.setAttributeNS(null, 'cy', cy);
+				segment.setAttributeNS(null, 'r', cr);
+				return segment;
+			}
+		}
+
  		function makeSegment2(i, n, color) {
  			if (color==null) {
  				color='#EEEEEE';
  			}
 
- 			if (n<4) {
+ 			if (n==1 && i==0) {
  				var cr=r
  				cr*=(n+1-i)/(n+1)
  				el_index+=1;
@@ -348,35 +440,37 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
  			}
  		}
 
- 	function makeSegment(i, n, color) {
- 		if (color==null) {
- 			color='#EEEEEE';
- 		}
- 		if (n>0) {
- 			var a=x+r*Math.cos(2*Math.PI/(n+1)*(i-0.5))
- 			var b=y+r*Math.sin(2*Math.PI/(n+1)*(i-0.5))
+		function makeSegment4(i, n, color) {
+ 			if (color==null) {
+ 				color='#EEEEEE';
+ 			}
 
- 			var c=x+r*Math.cos(2*Math.PI/(n+1)*(i-1.5))
- 			var d=y+r*Math.sin(2*Math.PI/(n+1)*(i-1.5))
- 			el_index+=1;
- 			return '<path id="a'+el_index.toString()+'" d="M' +
- 				a.toString()+','+b.toString() +
- 				'A'+r.toString()+','+r.toString()+' 0 0,0 '+c.toString()+','+d.toString() +
- 				' L '+x.toString()+' '+y.toString()+' z" fill="' +
- 				color + '" stroke-width="2" stroke="#ffffff"/>';
+ 			if (n==1 && i==0) {
+ 				var cr=r
+ 				cr*=(n+1-i)/(n+1)
+ 				el_index+=1;
+ 				return '<circle id="a'+el_index.toString()+'" cx="'+x.toString()+'" cy="'+y.toString()+'" r="'+cr.toString()+'" '+
+ 						'fill="'+color+'" stroke-width="2" stroke="#ffffff"/>';
+ 			}
+ 			else {
+ 				var a=x+r*Math.cos(2*Math.PI/n*(i-0.5))
+ 				var b=y+r*Math.sin(2*Math.PI/n*(i-0.5))
+
+ 				var c=x+r*Math.cos(2*Math.PI/n*(i-1.5))
+ 				var d=y+r*Math.sin(2*Math.PI/n*(i-1.5))
+ 				el_index+=1;
+ 				return '<path id="a'+el_index.toString()+'" d="M' +
+ 					a.toString()+','+b.toString() +
+ 					'A'+r.toString()+','+r.toString()+' 0 0,0 '+c.toString()+','+d.toString() +
+ 					' L '+x.toString()+' '+y.toString()+' z" fill="' +
+ 					color + '" stroke-width="2" stroke="#ffffff"/>';
+ 			}
  		}
- 		else {
- 			var cr=r
- 			el_index+=1;
- 			return '<circle id="a'+el_index.toString()+'" cx="'+x.toString()+'" cy="'+y.toString()+'" r="'+cr.toString()+'" '+
- 					'fill="'+color+'" stroke-width="2" stroke="#ffffff"/>';
- 		}
- 	}
 
  	function preTitle(text) {
- 	  const container = document.createElement("pre");
- 	  container.innerText = text;
- 	  return container;
+ 	  const textcontainer = document.createElement("pre");
+ 	  textcontainer.innerText = text;
+ 	  return textcontainer;
  	}
 
  	function redrawFixed() {
@@ -445,7 +539,7 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 					type: "double",
 					drag_interval: true,
 					grid: true,
-					onFinish: function (data) {
+					onChange: function (data) {
 						from_value[cs_select]=data.from;
 						to_value[cs_select]=data.to;
 						set_colors(false);
@@ -468,13 +562,21 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 	}
 
  	function drawTemplate(n) {
+		var other = n%2;
+		var n = Math.floor(n/2)+1;
  		el_index=-1;
  		var temp='<g transform="scale(1 1)">';
 
- 		for (var i = 0; i<n; i++) {
- 			temp+=makeSegment2(i,n-1,colors[i]);
- 		}
-
+		if(other) {
+	 		for (var i = 0; i<n; i++) {
+	 			temp+=makeSegment2(i,n-1,colors[i]);
+	 		}
+		}
+		else {
+			for (var i = 0; i<n; i++) {
+	 			temp+=makeSegment4(i,n,colors[i]);
+	 		}
+		}
  		document.getElementById("symbol").innerHTML = svg1.replace('content',temp).replace('"60"','"60"').replace('"60"','"60"');
 
  		var element = document.getElementById("ColorScales");
@@ -542,6 +644,7 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 
 	function setup_positions(selected) {
 		selected_node=selected;
+		highlight=-1;
 		var col1=document.getElementById("col1");
 		col1.innerHTML='';
 		container = document.createElementNS(svgns, "svg");
@@ -688,6 +791,7 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 		zoomTree.zoomBy(0.88)
 		pan[0]=-1;
 		pan[1]=-1;
+		show_details(selected);
 	}
 
 	function createNodes()
@@ -709,7 +813,8 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 		}
 	}
  	  function set_colors(reset) {
- 	    var n = slider.value;
+			var other=slider.value % 2;
+ 	    var n = Math.floor(slider.value/2)+1;
  		var element;
  		var ct;
  		var min_ = {};
@@ -800,31 +905,34 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 	 					}
 	 				}
 				}
-				circle = document.createElementNS(svgns, 'circle');
+				var circle;// = document.createElementNS(svgns, 'circle');
 				sw=0
+				var cx;
+				var cy;
+				var r_;
 				if (treestyle.checked) {
-					circle.setAttributeNS(null, 'cx', 5*min_size);
-					circle.setAttributeNS(null, 'cy', 1.25*min_size);
-					if(j==-1) {
-						r_ = min_size;
-					}
-					else {
-						r_ = min_size*((n-j)/n);
-					}
-					circle.setAttributeNS(null, 'r', r_);
+					cx=5*min_size;
+					cy=1.25*min_size;
+					//circle.setAttributeNS(null, 'cx', 5*min_size);
+					//circle.setAttributeNS(null, 'cy', 1.25*min_size);
+					r_ = min_size;
+					//circle.setAttributeNS(null, 'r', r_);
 					sw = 2
 				}
 				else {
-					circle.setAttributeNS(null, 'cx', 1.1*max_size*Math.pow(node_scale,nodes[i].level));
-					circle.setAttributeNS(null, 'cy', 1.1*max_size*Math.pow(node_scale,nodes[i].level));
-					if(j==-1) {
-						r_ = max_size*Math.pow(node_scale,nodes[i].level);
-					}
-					else {
-						r_ = max_size*Math.pow(node_scale,nodes[i].level)*((n-j)/n);
-					}
-					circle.setAttributeNS(null, 'r', r_);
+					cx=1.1*max_size*Math.pow(node_scale,nodes[i].level);
+					cy=1.1*max_size*Math.pow(node_scale,nodes[i].level)
+					//circle.setAttributeNS(null, 'cx', 1.1*max_size*Math.pow(node_scale,nodes[i].level));
+					//circle.setAttributeNS(null, 'cy', 1.1*max_size*Math.pow(node_scale,nodes[i].level));
+					r_ = max_size*Math.pow(node_scale,nodes[i].level);
+					//circle.setAttributeNS(null, 'r', r_);
 					sw=3*Math.pow(node_scale,nodes[i].level/2)
+				}
+
+				if(other)
+					circle=makeSegment3(j,n,cx,cy,r_);
+				else {
+					circle=makeSegment(j,n,cx,cy,r_);
 				}
 
 				if (j==-1) {
@@ -941,8 +1049,6 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 			//JsonView.expandChildren(tree);
 			JsonView.toggleNode(tree);
 			confirmCheckboxes();
-			prop = document.getElementById("properties");
-	    prop.style.display = "block";
 			#FUNCTION_CALLS#
 		}
 		else {
@@ -951,8 +1057,6 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 				custom_div = document.getElementById(div_list[d]);
 				custom_div.style.display = "none";
 			}
-			prop = document.getElementById("properties");
-	    prop.style.display = "none";
 		}
 	}
 
@@ -980,11 +1084,14 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 		for(d in div_list) {
 			var l = document.createElement("label");
 			var c = document.createElement("input");
+			var s = document.createElement("span");
 			c.setAttribute("type", "checkbox");
 			c.id = "custom_chk_"+d;
 			c.checked=true;
 			l.appendChild(c);
-			l.innerHTML += div_list[d];
+			s.setAttribute("class", "chklabel");
+			s.innerHTML = div_list[d];
+			l.appendChild(s);
 			cb.appendChild(l);
 		}
 	}
@@ -995,17 +1102,16 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 	treestyle.addEventListener("change", fix);
 
 	drawTemplate(slider.value);
-	setup_positions(1);
 	create_custom_dropdown();
 	slider_div=document.getElementById("slider_div")
 	slider_div.style.display="none";
 	for(d in div_list) {
-		c = document.getElementById("custom_chk_"+d);
-		c.checked=true;
+		document.getElementById("custom_chk_"+d).checked=true;
 	}
-	if (div_list.length<=1) {
-		document.getElementById("filter_vis").style.display="none";
-	}
+	// if (div_list.length<=1) {
+	// 	document.getElementById("filter_vis").style.display="none";
+	// }
+	setup_positions(1);
      </script>
    </body>
  </html>
