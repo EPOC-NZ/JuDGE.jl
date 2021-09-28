@@ -1,7 +1,7 @@
 name = "JuDGE"
 uuid = "7600667b-db04-5866-8f94-e5ff75fe7256"
 authors = ["Regan Baucke, Anthony Downward"]
-version = "0.1.5"
+version = "0.1.6"
 
 [deps]
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"

@@ -337,251 +337,49 @@ function format_output(node::AbstractTree, x::Symbol, exps, onlynonzero, inttol)
 end
 
 """
-	write_solution_to_file(deteq::DetEqModel,filename::String)
+	write_solution_to_file(model::Union{JuDGEModel,DetEqModel},filename::String)
 
 Given a deterministic equivalent model and a filename, this function writes the
 entire solution to a CSV.
 
 ### Required Arguments
-`deteq` is the deterministic equivalent model whose solution we wish to write to a file
+`model` can be either the `JuDGEModel` or the `DetEqModel` whose solution we wish to write to a file
 
 `filename` is the output filename
 """
-function write_solution_to_file(deteq::DetEqModel, filename::String)
-    if termination_status(deteq.problem) != MOI.OPTIMAL &&
-       termination_status(deteq.problem) != MOI.TIME_LIMIT
-        error("You need to first solve the decomposed model.")
-    end
+function write_solution_to_file(
+    model::Union{JuDGEModel,DetEqModel},
+    filename::String,
+)
     file = open(filename, "w")
 
     println(file, "node,value,variable,indices")
 
-    for node in collect(deteq.tree)
-        for (x, var) in deteq.problem.ext[:vars][node]
-            if typeof(var) == VariableRef
-                ss = split(string(x), '[')
-                if length(ss) == 1
-                    println(
-                        file,
-                        string(node.name) *
-                        "," *
-                        string(JuMP.value(var)) *
-                        "," *
-                        ss[1] *
-                        ",,",
-                    )
-                else
-                    println(
-                        file,
-                        string(node.name) *
-                        "," *
-                        string(JuMP.value(var)) *
-                        "," *
-                        ss[1] *
-                        "," *
-                        ss[2][1:end-1] *
-                        ",",
-                    )
-                end
-            elseif typeof(var) <: AbstractArray
-                for i in eachindex(var)
-                    ss = split(string(var[i]), '[')
-                    println(
-                        file,
-                        string(node.name) *
-                        "," *
-                        string(JuMP.value(var[i])) *
-                        "," *
-                        ss[1] *
-                        "," *
-                        ss[2][1:end-1] *
-                        ",",
-                    )
-                    #println(file,string(node.name)*",\""*string(var[i])*"\","*string(JuMP.value(var[i])))
-                end
-            end
-        end
-    end
+    solution = solution_to_dictionary(model)
 
-    for node in keys(deteq.problem.ext[:master_vars])
-        for (x, var) in deteq.problem.ext[:master_vars][node]
-            if typeof(var) == VariableRef
-                name = deteq.problem.ext[:master_names][node][x]
-                ss = split(string(x), '[')
-                if length(ss) == 1
-                    println(
-                        file,
-                        string(node.name) *
-                        "," *
-                        string(JuMP.value(var)) *
-                        "," *
-                        ss[1] *
-                        "_master,",
-                    )
-                else
-                    println(
-                        file,
-                        string(node.name) *
-                        "," *
-                        string(JuMP.value(var)) *
-                        "," *
-                        ss[1] *
-                        "_master," *
-                        ss[2][1:end-1] *
-                        ",",
-                    )
-                end
-            elseif typeof(var) <: Dict
-                for i in eachindex(var)
-                    name = deteq.problem.ext[:master_names][node][x][i]
-                    ss = split(string(name), '[')
-                    println(
-                        file,
-                        string(node.name) *
-                        "," *
-                        string(JuMP.value(var[i])) *
-                        "," *
-                        ss[1] *
-                        "_master," *
-                        ss[2][1:end-1] *
-                        ",",
-                    )
-                    #println(file,string(node.name)*",\""*name*"_master\","*string(JuMP.value(var[i])))
-                end
-            end
-        end
-    end
-
-    for (node, var) in deteq.problem.ext[:scenario_obj]
-        var = deteq.problem.ext[:scenario_obj][node]
-        if typeof(var) == VariableRef
-            println(
-                file,
-                string(node.name) *
-                "," *
-                string(JuMP.value(var)) *
-                ",scenario_obj,,",
-            )
-        end
-    end
-
-    return close(file)
-end
-
-"""
-	write_solution_to_file(jmodel::JuDGEModel,filename::String)
-
-Given a JuDGE model and a filename, this function writes the
-entire solution to a CSV.
-
-### Required Arguments
-`jmodel` is the JuDGE model whose solution we wish to write to a file
-
-`filename` is the output filename
-"""
-function write_solution_to_file(jmodel::JuDGEModel, filename::String)
-    function helper(jmodel::JuDGEModel, node::AbstractTree, file::IOStream)
-        vars = all_variables(jmodel.sub_problems[node])
-        for v in vars
-            temp = string(v)
-            i = findfirst('[', temp)
-            if i == nothing
-                temp = temp * ","
-            else
-                args = temp[i+1:length(temp)-1]
-                args = replace(args, "\"" => "")
-                args = replace(args, ", " => ";")
-                temp = temp[1:i-1] * "," * args * ""
-            end
-            if temp != ""
+    for node in keys(solution)
+        for (name, item) in solution[node]
+            if typeof(item) == Float64
                 println(
                     file,
-                    string(node.name) *
-                    "," *
-                    string(JuMP.value(v)) *
-                    "," *
-                    temp,
+                    node.name * "," * string(item) * "," * string(name) * ",",
                 )
-            end
-        end
-
-        for (x, var) in jmodel.master_problem.ext[:expansions][node]
-            if typeof(var) <: AbstractArray
-                val = JuMP.value.(var)
-                if typeof(var) <: JuMP.Containers.SparseAxisArray
-                    val = val.data
-                end
-                for key in keys(val)
-                    temp =
+            else
+                for (index, value) in item
+                    println(
+                        file,
                         node.name *
                         "," *
-                        string(val[key]) *
+                        string(value) *
                         "," *
-                        string(x) *
-                        "_master,"
-                    if typeof(val) <: Array
-                        strkey = string(key)
-                        strkey = replace(strkey, "CartesianIndex(" => "")
-                        strkey = replace(strkey, ")" => "")
-                        strkey = replace(strkey, ", " => ",")
-                        temp *= strkey
-                    elseif typeof(val) <: Dict
-                        strkey = string(key)
-                        strkey = replace(strkey, ")" => "")
-                        strkey = replace(strkey, "(" => "")
-                        strkey = replace(strkey, ", " => ",")
-                        temp *= strkey
-                    else
-                        for i in 1:length(val.axes)
-                            strkey = string(key[i])
-                            strkey = replace(strkey, "\"" => "")
-                            strkey = replace(strkey, ", " => ";")
-                            temp *= string(strkey) * ","
-                        end
-                        temp = temp[1:end-1]
-                    end
-                    println(file, temp)
+                        string(name) *
+                        "," *
+                        index,
+                    )
                 end
-            else
-                println(
-                    file,
-                    node.name *
-                    "," *
-                    string(JuMP.value(var)) *
-                    string(x) *
-                    "_master,",
-                )
             end
         end
-
-        if typeof(node) == Tree
-            for child in node.children
-                helper(jmodel, child, file)
-            end
-        else
-            println(
-                file,
-                node.name *
-                "," *
-                string(
-                    JuMP.value(
-                        jmodel.master_problem.ext[:scenprofit_var][node],
-                    ),
-                ) *
-                ",scenario_obj,",
-            )
-        end
     end
-
-    if termination_status(jmodel.master_problem) != MOI.OPTIMAL &&
-       termination_status(jmodel.master_problem) != MOI.INTERRUPTED &&
-       termination_status(jmodel.master_problem) != MOI.TIME_LIMIT
-        error("You need to first solve the decomposed model.")
-    end
-
-    file = open(filename, "w")
-    println(file, "node,value,variable,indices")
-    helper(jmodel, jmodel.tree, file)
 
     return close(file)
 end

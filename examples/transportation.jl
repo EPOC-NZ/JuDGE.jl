@@ -180,7 +180,6 @@ function transportation(; visualise = false)
     JuDGE.print_expansions(judy, format = format_output)
 
     println("\nRe-solved Objective: " * string(resolve_subproblems(judy)))
-    solution = JuDGE.solution_to_dictionary(judy)
 
     deteq = DetEqModel(
         mytree,
@@ -194,6 +193,9 @@ function transportation(; visualise = false)
         "Deterministic Equivalent Objective: " *
         string(objective_value(deteq.problem)),
     )
+
+    solution = JuDGE.solution_to_dictionary(judy)
+    solution2 = JuDGE.solution_to_dictionary(deteq)
 
     if visualise
         custom_plots = Dict{Symbol,Tuple{String,String,String}}()
@@ -251,6 +253,7 @@ function transportation(; visualise = false)
             mytree,
             solution,
             custom = custom_plots,
+            box_size = 800,
             filename = "transport",
         )
 

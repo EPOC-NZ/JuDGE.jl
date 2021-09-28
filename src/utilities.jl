@@ -374,7 +374,7 @@ function solution_to_dictionary(jmodel::JuDGEModel; prefix = "")
             if i == nothing
                 solution[node][Symbol(prefix * temp)] = JuMP.value(v)
             else
-                if Symbol(temp[1:i-1]) ∉ keys(solution[node])
+                if Symbol(prefix * temp[1:i-1]) ∉ keys(solution[node])
                     solution[node][Symbol(prefix * temp[1:i-1])] =
                         Dict{String,Float64}()
                 end
@@ -448,6 +448,81 @@ function solution_to_dictionary(jmodel::JuDGEModel; prefix = "")
 
     solution = Dict{AbstractTree,Dict{Symbol,Any}}()
     return helper(jmodel, jmodel.tree, solution)
+end
+
+function solution_to_dictionary(deteq::DetEqModel; prefix = "")
+    function helper(
+        deteq::DetEqModel,
+        node::AbstractTree,
+        solution::T where {T<:Dict},
+    )
+        solution[node] = Dict{Symbol,Any}()
+
+        for (x, var) in deteq.problem.ext[:vars][node]
+            ss = split(string(x), '[')
+            if length(ss) == 1
+                solution[node][Symbol(prefix * ss[1])] = JuMP.value(var)
+            else
+                if Symbol(prefix * ss[1]) ∉ keys(solution[node])
+                    solution[node][Symbol(prefix * ss[1])] =
+                        Dict{String,Float64}()
+                end
+                solution[node][Symbol(prefix * ss[1])][ss[2][1:end-1]] =
+                    JuMP.value(var)
+            end
+        end
+
+        for (x, var) in deteq.problem.ext[:master_vars][node]
+            if typeof(var) == VariableRef
+                ss = split(string(x), '[')
+                ss[1] *= "_master"
+                if length(ss) == 1
+                    solution[node][Symbol(prefix * ss[1])] = JuMP.value(var)
+                else
+                    # if Symbol(prefix * ss[1]) ∉ keys(solution[node])
+                    #     solution[node][Symbol(prefix * ss[1])] =
+                    #         Dict{String,Float64}()
+                    # end
+                    # solution[node][Symbol(prefix * ss[1])][ss[2][1:end-1]] = JuMP.value(var)
+                end
+            elseif typeof(var) <: Dict
+                for i in eachindex(var)
+                    name = deteq.problem.ext[:master_names][node][x][i]
+                    ss = split(string(name), '[')
+                    ss[1] *= "_master"
+                    if Symbol(prefix * ss[1]) ∉ keys(solution[node])
+                        solution[node][Symbol(prefix * ss[1])] =
+                            Dict{String,Float64}()
+                    end
+                    solution[node][Symbol(prefix * ss[1])][ss[2][1:end-1]] =
+                        JuMP.value(var[i])
+                end
+            end
+        end
+
+        if typeof(node) == Tree
+            for child in node.children
+                helper(deteq, child, solution)
+            end
+        else
+            solution[node][Symbol(prefix * "scenario_obj")] =
+                JuMP.value(deteq.problem.ext[:scenario_obj][node])
+        end
+        return solution
+    end
+
+    if termination_status(deteq.problem) != MOI.OPTIMAL &&
+       termination_status(deteq.problem) != MOI.TIME_LIMIT &&
+       termination_status(deteq.problem) != MOI.INTERRUPTED
+        error("You need to first solve the deterministic equivalent model.")
+    end
+
+    if prefix != ""
+        prefix *= "_"
+    end
+
+    solution = Dict{AbstractTree,Dict{Symbol,Any}}()
+    return helper(deteq, deteq.tree, solution)
 end
 
 function set_starting_solution!(deteq::DetEqModel, jmodel::JuDGEModel)
