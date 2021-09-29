@@ -140,14 +140,6 @@ function objcoef(x::JuMP.VariableRef)
     end
 end
 
-# function coef(aff, x::JuMP.VariableRef)
-#     if x in keys(aff.terms)
-#         aff.terms[x]
-#     else
-#         0.0
-#     end
-# end
-
 function coef(aff, x::JuMP.VariableRef)
     if x in keys(aff)
         aff[x]
@@ -249,123 +241,20 @@ function compute_objval(
     return obj + EV_weight * EV
 end
 
-# function solution_to_dictionary(jmodel::JuDGEModel; prefix = "")
-#     function helper(
-#         jmodel::JuDGEModel,
-#         node::AbstractTree,
-#         solution::T where {T<:Dict},
-#     )
-#         vars = all_variables(jmodel.sub_problems[node])
-#         for v in vars
-#             temp = string(v)
-#             i = findfirst('[', temp)
-#             if i == nothing
-#                 if Symbol(prefix * temp) ∉ keys(solution)
-#                     solution[Symbol(prefix * temp)] =
-#                         Dict{AbstractTree,Float64}()
-#                 end
-#                 solution[Symbol(prefix * temp)][node] = JuMP.value(v)
-#             else
-#                 if Symbol(temp[1:i-1]) ∉ keys(solution)
-#                     solution[Symbol(prefix * temp[1:i-1])] =
-#                         Dict{String,Dict{AbstractTree,Float64}}()
-#                 end
-#                 if temp[i+1:length(temp)-1] ∉
-#                    keys(solution[Symbol(prefix * temp[1:i-1])])
-#                     solution[Symbol(prefix * temp[1:i-1])][temp[i+1:length(
-#                         temp,
-#                     )-1]] = Dict{AbstractTree,Float64}()
-#                 end
-#                 solution[Symbol(prefix * temp[1:i-1])][temp[i+1:length(
-#                     temp,
-#                 )-1]][node] = JuMP.value(v)
-#             end
-#         end
-#
-#         for (x, var) in jmodel.master_problem.ext[:expansions][node]
-#             if typeof(var) <: AbstractArray
-#                 if Symbol(prefix * string(x) * "_master") ∉ keys(solution)
-#                     solution[Symbol(prefix * string(x) * "_master")] =
-#                         Dict{String,Dict{AbstractTree,Float64}}()
-#                 end
-#                 val = JuMP.value.(var)
-#                 if typeof(var) <: JuMP.Containers.SparseAxisArray
-#                     val = val.data
-#                 end
-#                 for key in keys(val)
-#                     temp = ""
-#                     if typeof(val) <: Array
-#                         strkey = string(key)
-#                         strkey = replace(strkey, "CartesianIndex(" => "")
-#                         strkey = replace(strkey, ")" => "")
-#                         strkey = replace(strkey, ", " => ",")
-#                         temp *= strkey
-#                     elseif typeof(val) <: Dict
-#                         strkey = string(key)
-#                         strkey = replace(strkey, ")" => "")
-#                         strkey = replace(strkey, "(" => "")
-#                         strkey = replace(strkey, ", " => ",")
-#                         temp *= strkey
-#                     else
-#                         for i in 1:length(val.axes)-1
-#                             temp *= string(key[i]) * ","
-#                         end
-#                         temp *= string(key[length(val.axes)])
-#                     end
-#                     if temp ∉
-#                        keys(solution[Symbol(prefix * string(x) * "_master")])
-#                         solution[Symbol(prefix * string(x) * "_master")][temp] =
-#                             Dict{AbstractTree,Float64}()
-#                     end
-#                     solution[Symbol(prefix * string(x) * "_master")][temp][node] =
-#                         val[key]
-#                 end
-#             else
-#                 if Symbol(prefix * string(x) * "_master") ∉ keys(solution)
-#                     solution[Symbol(prefix * string(x) * "_master")] =
-#                         Dict{AbstractTree,Float64}()
-#                 end
-#                 solution[Symbol(prefix * string(x) * "_master")][node] =
-#                     JuMP.value(var)
-#             end
-#         end
-#
-#         if typeof(node) == Tree
-#             for child in node.children
-#                 helper(jmodel, child, solution)
-#             end
-#         else
-#             if Symbol(prefix * "scenario_obj") ∉ keys(solution)
-#                 solution[Symbol(prefix * "scenario_obj")] =
-#                     Dict{AbstractTree,Float64}()
-#             end
-#             solution[Symbol(prefix * "scenario_obj")][node] =
-#                 JuMP.value(jmodel.master_problem.ext[:scenprofit_var][node])
-#         end
-#         return solution
-#     end
-#
-#     if termination_status(jmodel.master_problem) != MOI.OPTIMAL &&
-#        termination_status(jmodel.master_problem) != MOI.INTERRUPTED &&
-#        termination_status(jmodel.master_problem) != MOI.TIME_LIMIT &&
-#        termination_status(jmodel.master_problem) != MOI.LOCALLY_SOLVED
-#         error("You need to first solve the decomposed model.")
-#     end
-#
-#     if prefix != ""
-#         prefix *= "_"
-#     end
-#
-#     solution = Dict{Symbol,Any}()
-#     return helper(jmodel, jmodel.tree, solution)
-# end
+"""
+    solution_to_dictionary(jmodel::JuDGEModel; prefix::String = "")
 
-function solution_to_dictionary(jmodel::JuDGEModel; prefix = "")
-    function helper(
-        jmodel::JuDGEModel,
-        node::AbstractTree,
-        solution::T where {T<:Dict},
-    )
+Create a nested dictionary with the solution values for each node copied across to
+a standardised structure.
+
+### Required Arguments
+`jmodel` is a solved JuDGEModel
+
+### Optional Arguments
+`prefix` is a string that will be prepended to each of the variable names (e.g. if comparing to versions of the same model)
+"""
+function solution_to_dictionary(jmodel::JuDGEModel; prefix::String = "")
+    function helper(node::AbstractTree, solution::T where {T<:Dict})
         solution[node] = Dict{Symbol,Any}()
         vars = all_variables(jmodel.sub_problems[node])
         for v in vars
@@ -426,7 +315,7 @@ function solution_to_dictionary(jmodel::JuDGEModel; prefix = "")
 
         if typeof(node) == Tree
             for child in node.children
-                helper(jmodel, child, solution)
+                helper(child, solution)
             end
         else
             solution[node][Symbol(prefix * "scenario_obj")] =
@@ -447,15 +336,23 @@ function solution_to_dictionary(jmodel::JuDGEModel; prefix = "")
     end
 
     solution = Dict{AbstractTree,Dict{Symbol,Any}}()
-    return helper(jmodel, jmodel.tree, solution)
+    return helper(jmodel.tree, solution)
 end
 
-function solution_to_dictionary(deteq::DetEqModel; prefix = "")
-    function helper(
-        deteq::DetEqModel,
-        node::AbstractTree,
-        solution::T where {T<:Dict},
-    )
+"""
+    solution_to_dictionary(deteq::DetEqModel; prefix::String = "")
+
+Create a nested dictionary with the solution values for each node copied across to
+a standardised structure.
+
+### Required Arguments
+`deteq` is a solved DetEqModel
+
+### Optional Arguments
+`prefix` is a string that will be prepended to each of the variable names (e.g. if comparing to versions of the same model)
+"""
+function solution_to_dictionary(deteq::DetEqModel; prefix::String = "")
+    function helper(node::AbstractTree, solution::T where {T<:Dict})
         solution[node] = Dict{Symbol,Any}()
 
         for (x, var) in deteq.problem.ext[:vars][node]
@@ -502,7 +399,7 @@ function solution_to_dictionary(deteq::DetEqModel; prefix = "")
 
         if typeof(node) == Tree
             for child in node.children
-                helper(deteq, child, solution)
+                helper(child, solution)
             end
         else
             solution[node][Symbol(prefix * "scenario_obj")] =
@@ -522,9 +419,18 @@ function solution_to_dictionary(deteq::DetEqModel; prefix = "")
     end
 
     solution = Dict{AbstractTree,Dict{Symbol,Any}}()
-    return helper(deteq, deteq.tree, solution)
+    return helper(deteq.tree, solution)
 end
 
+"""
+    set_starting_solution!(deteq::DetEqModel, jmodel::JuDGEModel)
+
+Use the best solution from a JuDGEModel to warm start the deterministic equivalent.
+
+### Required Arguments
+`deteq` is an unsolved DetEqModel
+`jmodel` is a solved JuDGEModel
+"""
 function set_starting_solution!(deteq::DetEqModel, jmodel::JuDGEModel)
     for node in collect(jmodel.tree)
         for (name, exps) in jmodel.master_problem.ext[:expansions][node]
@@ -555,6 +461,18 @@ function set_starting_solution!(deteq::DetEqModel, jmodel::JuDGEModel)
     end
 end
 
+"""
+    add_to_dictionary!(
+        original::Dict{AbstractTree,Dict{Symbol,Any}},
+        sym::Union{Symbol,Vector{Symbol}})
+
+Given a dictionary produced by the `solution_to_dictionary()` function, and a Symbol or Symbol[],
+this function adds that/those Symbol(s) to the dictionary.
+
+### Required Arguments
+`original` is a dictionary produced by `solution_to_dictionary()`
+`sym` is a Symbol or Symbol vector of keys to add to each node within the dictionary
+"""
 function add_to_dictionary!(
     original::Dict{AbstractTree,Dict{Symbol,Any}},
     add::T where {T<:Dict},
@@ -578,6 +496,18 @@ function add_to_dictionary!(
     end
 end
 
+"""
+    remove_from_dictionary!(
+        original::Dict{AbstractTree,Dict{Symbol,Any}},
+        sym::Union{Symbol,Vector{Symbol}})
+
+Given a dictionary produced by the `solution_to_dictionary()` function, and a Symbol or Symbol[],
+this function removes that/those Symbol(s) from the dictionary.
+
+### Required Arguments
+`original` is a dictionary produced by `solution_to_dictionary()`
+`sym` is a Symbol or Symbol vector of keys to remove from each node within the dictionary.
+"""
 function remove_from_dictionary!(
     original::Dict{AbstractTree,Dict{Symbol,Any}},
     sym::Union{Symbol,Vector{Symbol}},
@@ -595,6 +525,17 @@ function remove_from_dictionary!(
     end
 end
 
+"""
+	get_active_columns(jmodel::JuDGEModel; inttol = 10^-7)
+
+Returns a list of tuples of non-zero columns along with their corresponding value.
+
+### Required Arguments
+`jmodel` is a solved JuDGEModel
+
+### Optional Arguments
+`inttol` is the minimum value for a variable to be deemed non-zero
+"""
 function get_active_columns(jmodel::JuDGEModel; inttol = 10^-7)
     active = Dict{AbstractTree,Vector{Any}}()
     for node in collect(jmodel.tree)

@@ -56,6 +56,7 @@ JuDGE.@ongoingcosts
 
 ### JuDGE Output
 ```@docs
+JuDGE.solution_to_dictionary(::JuDGEModel,::String)
 JuDGE.write_solution_to_file(::JuDGEModel,::String)
 JuDGE.print_expansions(::JuDGEModel)
 ```
@@ -66,10 +67,12 @@ JuDGE.print_expansions(::JuDGEModel)
 ```@docs
 JuDGE.DetEqModel
 JuDGE.solve(::DetEqModel)
+JuDGE.set_starting_solution!
 ```
 
 ### Deterministic Equivalent Output
 ```@docs
+JuDGE.solution_to_dictionary(::DetEqModel,::String)
 JuDGE.write_solution_to_file(::DetEqModel,::String)
 JuDGE.print_expansions(::DetEqModel)
 ```

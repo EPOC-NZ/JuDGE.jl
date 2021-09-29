@@ -11,17 +11,17 @@ solve complex multi-stage (and multi-horizon) capacity expansion problems.
 JuDGE supports generalized set partitioning problems. This, however, is
 experimental.
 
-Please see the [documentation](https://reganbaucke.github.io/JuDGE.jl/)
+Please see the [documentation](https://EPOC-UoA.github.io/JuDGE.jl/)
 for details about installing JuDGE.jl, and examples showing how to set up a
 stochastic capacity example model using the JuDGE.jl package.
 
 For more details see our working paper: [JuDGE.jl: a Julia package for optimizing capacity expansion](http://www.optimization-online.org/DB_HTML/2020/11/8086.html).
 
-[build-img]: https://github.com/reganbaucke/JuDGE.jl/workflows/CI/badge.svg?branch=master
-[build-url]: https://github.com/reganbaucke/JuDGE.jl/actions?query=workflow%3ACI
+[build-img]: https://github.com/EPOC-UoA/JuDGE.jl/workflows/CI/badge.svg?branch=master
+[build-url]: https://github.com/EPOC-UoA/JuDGE.jl/actions?query=workflow%3ACI
 
-[codecov-img]: https://codecov.io/github/reganbaucke/JuDGE.jl/coverage.svg?branch=master
-[codecov-url]: https://codecov.io/github/reganbaucke/JuDGE.jl?branch=master
+[codecov-img]: https://codecov.io/github/EPOC-UoA/JuDGE.jl/coverage.svg?branch=master
+[codecov-url]: https://codecov.io/github/EPOC-UoA/JuDGE.jl?branch=master
 
 [docs-latest-img]: https://img.shields.io/badge/docs-latest-blue.svg
-[docs-latest-url]: https://reganbaucke.github.io/JuDGE.jl
+[docs-latest-url]: https://EPOC-UoA.github.io/JuDGE.jl

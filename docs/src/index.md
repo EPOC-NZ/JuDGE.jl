@@ -36,7 +36,7 @@ GLPK.
 JuDGE is installed by the `Pkg` utility provided by Julia. In the Julia REPL,
 simply make the following function call.
 
-    ] add "https://github.com/reganbaucke/JuDGE.jl"
+    ] add "https://github.com/EPOC-UoA/JuDGE.jl"
 
 Then, in your Julia script, use
 
@@ -55,11 +55,11 @@ See the [Tutorials](@ref) for details about this.
 
 ## Limitations
 
-- The package is currently under development, and while it has been tested on a 
+- The package is currently under development, and while it has been tested on a
 number of example problems, there may be some issues that have yet to be addressed.
 
 - Support for decisions to reduce capacity is not fully tested.
 
 ## Bugs
 
-Please raise an [issue](https://github.com/reganbaucke/JuDGE.jl/issues) if you experience an error while using JuDGE.
+Please raise an [issue](https://github.com/EPOC-UoA/JuDGE.jl/issues) if you experience an error while using JuDGE.

@@ -107,7 +107,8 @@ in the scenario tree
 
 `perfect_foresight` is a boolean; this is an experimental feature, which creates an array of
 JuDGE models, one for each leaf node. This will enable users to easily compute the EVPI for
-the stochastic program. Also can be used for regret-based risk implementations.
+the stochastic program. Also can be used for regret-based risk implementations. See the example
+EVPI_and_VSS.jl.
 
 ### Examples
 	judge = JuDGEModel(tree, ConditionallyUniformProbabilities, sub_problems,
@@ -1074,6 +1075,21 @@ function fix_expansions(jmodel::JuDGEModel)
     end
 end
 
+"""
+set_policy!(
+    jmodel::JuDGEModel,
+    jmodel2::JuDGEModel,
+    mapping::Union{Symbol,Dict{AbstractTree,AbstractTree}})
+
+Fixes the policy of a JuDGEModel object based on another JuDGEModel object.
+
+### Required Arguments
+`jmodel` is the JuDGE model for which we wish to set the policy.
+`jmodel2` is the JuDGE model from which we wish to copy the policy.
+`mapping` is can either be set to the symbol `:by_depth` or `:by_nodeID` or be an explicit
+dictionary mapping the nodes in `jmodel.tree` the nodes in `jmodel2.tree`. For any node in `jmodel.tree`
+that is not mapped, no policy is set.
+"""
 function set_policy!(
     jmodel::JuDGEModel,
     jmodel2::JuDGEModel,

@@ -34,7 +34,7 @@ Steps 3 and 4.
 A `Tree` can be built in many different ways. A `Tree` simply consists
 of the root node of the tree, and a list of all the nodes in the tree. This is
 defined as a nested set of subtrees, with the final nodes being `Leaf` nodes. Each
-subtree simply defines its parent and children, and there are functions that facilitate
+subtree simply defines its parent and children, and there are functions that facilitate defining
 the probability of arriving at the node, and the data that corresponds to the node,
 can be referenced through dictionaries.
 
