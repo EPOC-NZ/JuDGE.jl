@@ -7,16 +7,28 @@ if !isdefined(@__MODULE__, :JuDGE_MP_Solver)
     include("solvers/setup_gurobi.jl")
 end
 
-function setup_model(seed::Int)
+function createRandomArray(seed::Int, n::Int, a::Int, b::Int)
     Random.seed!(seed)
+
+    array = []
+    for i in 1:n
+        push!(array, rand(a))
+    end
+
+    for i in 1:2*n
+        push!(array, rand(b))
+    end
+
+    return array
+end
+
+function setup_model(seed::Int, numitems::Int, array)
+
     # how many investments?
     numinvest = 2
 
-    # number of items to pick from in the knapsack?
-    numitems = 20
-
     # size of tree?
-    degree = 4
+    degree = 3
     height = 3
 
     mytree = narytree(height, degree)
@@ -25,13 +37,17 @@ function setup_model(seed::Int)
     nodes = collect(mytree)
     totalnodes = length(nodes)
 
+    if array == nothing
+        array = createRandomArray(seed, totalnodes, numinvest, numitems)
+    end
+
     # create a dictionary to store all the nodal data
     data = Dict{Symbol,Dict{AbstractTree,Any}}()
 
     data[:investcost] = Dict{AbstractTree,Any}()
     for i in 1:totalnodes
         data[:investcost][nodes[i]] =
-            (rand(numinvest) * 2 + 2 * [2.0, 3.5]) *
+            (popfirst!(array) * 2 + 2 * [2.0, 3.5]) *
             (1 - ((i - 1) / (totalnodes * 1.2))) / 2
     end
 
@@ -41,14 +57,16 @@ function setup_model(seed::Int)
     data[:itemvolume] = Dict{AbstractTree,Any}()
     for i in 1:totalnodes
         data[:itemvolume][nodes[i]] =
-            ((rand(numitems) .- 0.5) * 2) * 2 +
-            collect(range(4, 22, length = numitems))
+            (
+                ((popfirst!(array) .- 0.5) * 2) * 2 +
+                collect(range(4, 22, length = numitems))
+            ) * 20 / numitems
     end
 
     data[:itemcost] = Dict{AbstractTree,Any}()
     for i in 1:totalnodes
         data[:itemcost][nodes[i]] =
-            ((rand(numitems) .- 0.5) * 2) * 0.5 +
+            ((popfirst!(array) .- 0.5) * 2) * 0.5 +
             collect(range(0.5, 1, length = numitems))
     end
 
@@ -81,6 +99,8 @@ function policy_comparison(
     tree::AbstractTree,
     probabilities::Dict{AbstractTree,Float64},
     sub_problems::T where {T<:Function},
+    visualise::Bool,
+    reltol::Float64,
 )
     height = JuDGE.depth(collect(tree)[end])
 
@@ -108,7 +128,7 @@ function policy_comparison(
     @info("Solving here-and-now problem")
     JuDGE.branch_and_price(
         HN,
-        termination = Termination(inttol = 10^-7, reltol = 0.001),
+        termination = Termination(inttol = 10^-7, reltol = reltol),
         verbose = 0,
     )
 
@@ -122,8 +142,17 @@ function policy_comparison(
     JuDGE.add_to_dictionary!(vis, sub_problems.data[:investcost], :investcost)
     JuDGE.add_to_dictionary!(vis, sub_problems.data[:itemvolume], :itemvolume)
     JuDGE.add_to_dictionary!(vis, sub_problems.data[:itemcost], :itemcost)
-    JuDGE.visualize_tree(tree2, vis, filename = "augmented", rel_angle = true)
-
+    if visualise
+        JuDGE.visualize_tree(
+            tree2,
+            vis,
+            filename = "augmented",
+            rel_angle = true,
+        )
+    else
+        JuDGE.remove_from_dictionary!(vis, :itemcost)
+        println(JuDGE.get_active_columns(HN; inttol = 10^-7))
+    end
     # code for EEV and rolling horizon
     RH = nothing
     RH_old = nothing
@@ -133,32 +162,38 @@ function policy_comparison(
         tree3, pr = JuDGE.refine_tree(tree2, probabilities, iter)
 
         # visualise the trees that are used to find and simulate the EV and RH policies
-        vis = Dict{AbstractTree,Dict{Symbol,Any}}()
-        JuDGE.add_to_dictionary!(
-            vis,
-            sub_problems.data[:investcost],
-            :investcost,
-        )
-        JuDGE.add_to_dictionary!(
-            vis,
-            sub_problems.data[:itemvolume],
-            :itemvolume,
-        )
-        JuDGE.add_to_dictionary!(vis, sub_problems.data[:itemcost], :itemcost)
-        #JuDGE.add_to_dictionary!(vis, pr, :probability)
-        JuDGE.visualize_tree(
-            tree3,
-            vis,
-            filename = "iter" * string(iter),
-            rel_angle = true,
-        )
+        if visualise
+            vis = Dict{AbstractTree,Dict{Symbol,Any}}()
+            JuDGE.add_to_dictionary!(
+                vis,
+                sub_problems.data[:investcost],
+                :investcost,
+            )
+            JuDGE.add_to_dictionary!(
+                vis,
+                sub_problems.data[:itemvolume],
+                :itemvolume,
+            )
+            JuDGE.add_to_dictionary!(
+                vis,
+                sub_problems.data[:itemcost],
+                :itemcost,
+            )
+            #JuDGE.add_to_dictionary!(vis, pr, :probability)
+            JuDGE.visualize_tree(
+                tree3,
+                vis,
+                filename = "iter" * string(iter),
+                rel_angle = true,
+            )
+        end
         # in iteration 1, we can find the EEV by simulating the solution from iteration 0, in the real tree
         if iter == 1
             EEV = JuDGEModel(tree, probabilities, sub_problems, JuDGE_MP_Solver)
             JuDGE.set_policy!(EEV, RH_old, :by_depth)
             JuDGE.branch_and_price(
                 EEV,
-                termination = Termination(inttol = 10^-7, reltol = 0.001),
+                termination = Termination(inttol = 10^-7, reltol = reltol),
                 verbose = 0,
             )
         end
@@ -171,7 +206,7 @@ function policy_comparison(
 
         JuDGE.branch_and_price(
             RH,
-            termination = Termination(inttol = 10^-7, reltol = 0.001),
+            termination = Termination(inttol = 10^-7, reltol = reltol),
             verbose = 0,
         )
         RH_old = RH
@@ -205,12 +240,29 @@ function policy_comparison(
     JuDGE.print_expansions(EEV, inttol = 10e-6)
 
     @info("RH expansions:")
-    return JuDGE.print_expansions(RH, inttol = 10e-6)
+    JuDGE.print_expansions(RH, inttol = 10e-6)
+
+    return [JuDGE.get_objval(HN), JuDGE.get_objval(EEV), JuDGE.get_objval(RH)]
 end
 
-function evpi_vss()
-    (tree, probabilities, sub_problems) = setup_model(389335)
-    return policy_comparison(tree, probabilities, sub_problems)
+function evpi_vss(
+    seed::Int,
+    numitems::Int,
+    visualise::Bool,
+    reltol::Float64;
+    array = nothing,
+)
+    array = deepcopy(array)
+    (tree, probabilities, sub_problems) = setup_model(seed, numitems, array)
+    return policy_comparison(
+        tree,
+        probabilities,
+        sub_problems,
+        visualise,
+        reltol,
+    )
 end
 
-evpi_vss()
+if !isdefined(@__MODULE__, :running_tests) || !running_tests
+    evpi_vss(389335, 20, true, 0.001)
+end

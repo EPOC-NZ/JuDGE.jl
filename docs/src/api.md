@@ -42,7 +42,7 @@ JuDGE.branch_and_price
 JuDGE.Termination
 JuDGE.variable_branch
 JuDGE.resolve_subproblems
-JuDGE.set_policy
+JuDGE.set_policy!
 ```
 
 ### JuDGE Macros for Subproblems

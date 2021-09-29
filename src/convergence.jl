@@ -155,7 +155,12 @@ function display(termination::Termination)
     println("---------------------------------------------")
     Printf.@printf("Integer tolerance:  %5.4e\n", termination.inttol)
     Printf.@printf("Time-limit:         %5.4e\n", termination.time_limit)
-    Printf.@printf("Max iterations:     %10d\n", termination.max_iter)
+    if termination.max_iter == typemax(Int)
+        print("Max iterations:     Unlimited\n")
+    else
+        Printf.@printf("Max iterations:     %10d\n", termination.max_iter)
+    end
+
     Printf.@printf("Allow fractional:   %s\n", string(termination.allow_frac))
     return println("---------------------------------------------")
 end
