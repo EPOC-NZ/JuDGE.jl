@@ -81,7 +81,7 @@ include(joinpath(_EXAMPLES_DIR, "solvers", "setup_glpk.jl"))
 
     @testset "Transportation network expansion" begin
         include(joinpath(_EXAMPLES_DIR, "transportation.jl"))
-        @test transportation(visualise = false) ≈ 1924.35 atol = 1e-2
+        @test transportation(view_file = false) ≈ 1924.35 atol = 1e-2
     end
 
     @testset "EVPI / VSS" begin

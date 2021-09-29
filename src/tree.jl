@@ -251,6 +251,7 @@ function visualize_tree(
     style::Symbol = :standard,
     box_size::Int = 800,
     filename::String = string(Int(round((time() * 100) % 100000))),
+    view_file::Bool = true,
 )
     maxdata = Dict{Symbol,Any}()
     mindata = Dict{Symbol,Any}()
@@ -569,14 +570,18 @@ function visualize_tree(
     println(file, s)
     close(file)
 
-    if Sys.iswindows()
-        run(`$(ENV["COMSPEC"]) /c start $(filename)`)
-    elseif Sys.isapple()
-        run(`open $(filename)`)
-    elseif Sys.islinux() || Sys.isbsd()
-        run(`xdg-open $(filename)`)
-    else
-        error("Unable to show plot. Try opening the file $(filename) manually.")
+    if view_file
+        if Sys.iswindows()
+            run(`$(ENV["COMSPEC"]) /c start $(filename)`)
+        elseif Sys.isapple()
+            run(`open $(filename)`)
+        elseif Sys.islinux() || Sys.isbsd()
+            run(`xdg-open $(filename)`)
+        else
+            error(
+                "Unable to show plot. Try opening the file $(filename) manually.",
+            )
+        end
     end
 
     return

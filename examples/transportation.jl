@@ -7,7 +7,7 @@ if !isdefined(@__MODULE__, :JuDGE_MP_Solver)
     include("solvers/setup_gurobi.jl")
 end
 
-function transportation(; visualise = false)
+function transportation(; view_file = false)
     mytree = narytree(5, 2)
 
     function invest_supply_cost(node)
@@ -197,79 +197,78 @@ function transportation(; visualise = false)
     solution = JuDGE.solution_to_dictionary(judy)
     solution2 = JuDGE.solution_to_dictionary(deteq)
 
-    if visualise
-        custom_plots = Dict{Symbol,Tuple{String,String,String}}()
-        custom_plots[:graph1] = (
-            "plotly",
-            "plotly_graph",
-            joinpath(@__DIR__, "plot_functions", "transportation.js"),
-        )
-        for node in keys(solution)
-            solution[node][:custom_data] = Dict{Symbol,Any}()
+    custom_plots = Dict{Symbol,Tuple{String,String,String}}()
+    custom_plots[:graph1] = (
+        "plotly",
+        "plotly_graph",
+        joinpath(@__DIR__, "plot_functions", "transportation.js"),
+    )
+    for node in keys(solution)
+        solution[node][:custom_data] = Dict{Symbol,Any}()
 
-            graphs = []
+        graphs = []
 
-            graph = Dict{Symbol,Any}()
-            graph[:x] = []
-            graph[:y] = []
-            for (k, v) in solution[node][:new_capacity]
-                push!(graph[:x], k)
-                f = string(split(k, ',')[1])
-                t = string(split(k, ',')[2])
-                push!(graph[:y], c_dict[f, t] * (1 + v))
-            end
-            graph[:type] = "bar"
-            graph[:marker] = Dict(:color => "rgb(255, 200, 200)")
-            graph[:name] = "Augmented Capacity"
-            push!(graphs, graph)
-
-            graph = Dict{Symbol,Any}()
-            graph[:x] = []
-            graph[:y] = []
-            for (k, v) in solution[node][:new_capacity]
-                push!(graph[:x], k)
-                f = string(split(k, ',')[1])
-                t = string(split(k, ',')[2])
-                push!(graph[:y], c_dict[f, t])
-            end
-            graph[:type] = "bar"
-            graph[:marker] = Dict(:color => "rgb(180, 220, 180)")
-            graph[:name] = "Initial Capacity"
-            push!(graphs, graph)
-
-            graph = Dict{Symbol,Any}()
-            graph = Dict{Symbol,Any}()
-            graph[:x] = collect(keys(solution[node][:x]))
-            graph[:y] = collect(values(solution[node][:x]))
-            graph[:type] = "bar"
-            graph[:marker] = Dict(:color => "rgb(140, 140, 220)")
-            graph[:width] = 0.5
-            graph[:name] = "Flow"
-            push!(graphs, graph)
-
-            solution[node][:custom_data][:graph1] = graphs
+        graph = Dict{Symbol,Any}()
+        graph[:x] = []
+        graph[:y] = []
+        for (k, v) in solution[node][:new_capacity]
+            push!(graph[:x], k)
+            f = string(split(k, ',')[1])
+            t = string(split(k, ',')[2])
+            push!(graph[:y], c_dict[f, t] * (1 + v))
         end
-        JuDGE.visualize_tree(
-            mytree,
-            solution,
-            custom = custom_plots,
-            box_size = 800,
-            filename = "transport",
-        )
+        graph[:type] = "bar"
+        graph[:marker] = Dict(:color => "rgb(255, 200, 200)")
+        graph[:name] = "Augmented Capacity"
+        push!(graphs, graph)
 
-        JuDGE.write_solution_to_file(
-            judy,
-            joinpath(@__DIR__, "transport_solution_decomp.csv"),
-        )
-        JuDGE.write_solution_to_file(
-            deteq,
-            joinpath(@__DIR__, "transport_solution_deteq.csv"),
-        )
+        graph = Dict{Symbol,Any}()
+        graph[:x] = []
+        graph[:y] = []
+        for (k, v) in solution[node][:new_capacity]
+            push!(graph[:x], k)
+            f = string(split(k, ',')[1])
+            t = string(split(k, ',')[2])
+            push!(graph[:y], c_dict[f, t])
+        end
+        graph[:type] = "bar"
+        graph[:marker] = Dict(:color => "rgb(180, 220, 180)")
+        graph[:name] = "Initial Capacity"
+        push!(graphs, graph)
+
+        graph = Dict{Symbol,Any}()
+        graph = Dict{Symbol,Any}()
+        graph[:x] = collect(keys(solution[node][:x]))
+        graph[:y] = collect(values(solution[node][:x]))
+        graph[:type] = "bar"
+        graph[:marker] = Dict(:color => "rgb(140, 140, 220)")
+        graph[:width] = 0.5
+        graph[:name] = "Flow"
+        push!(graphs, graph)
+
+        solution[node][:custom_data][:graph1] = graphs
     end
+    JuDGE.visualize_tree(
+        mytree,
+        solution,
+        custom = custom_plots,
+        box_size = 800,
+        filename = "transport",
+        view_file = view_file,
+    )
+
+    JuDGE.write_solution_to_file(
+        judy,
+        joinpath(@__DIR__, "transport_solution_decomp.csv"),
+    )
+    JuDGE.write_solution_to_file(
+        deteq,
+        joinpath(@__DIR__, "transport_solution_deteq.csv"),
+    )
 
     return objective_value(judy.master_problem)
 end
 
 if !isdefined(@__MODULE__, :running_tests) || !running_tests
-    transportation(visualise = true)
+    transportation(view_file = true)
 end
