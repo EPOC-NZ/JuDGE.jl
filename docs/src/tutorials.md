@@ -211,11 +211,11 @@ use of capacity that is granted, then this should be modelled within the `@objec
 function sub_problems_ongoing(node)
    sp = Model(JuDGE_SP_Solver)
    @expansion(sp, invest[1:num_invest], Bin)
-	@capitalcosts(sp, sum(invest[i]*invest_volume[i] for i=1:num_invest)*invest_cost[node])
-	@ongoingcosts(sp, sum(invest[i]*invest_volume[i] for i=1:num_invest)*2)
+   @capitalcosts(sp, sum(invest[i]*invest_volume[i] for i=1:num_invest)*invest_cost[node])
+   @ongoingcosts(sp, sum(invest[i]*invest_volume[i] for i=1:num_invest)*2)
    @variable(sp, y[1:num_items], Bin)
    @constraint(sp, BagExtension, sum(y[i]*item_volume[node][i] for i in 1:num_items) <=
-        initial_volume + sum(invest_volume[i] * invest[i] for i in 1:num_invest))
+      initial_volume + sum(invest_volume[i] * invest[i] for i in 1:num_invest))
    @objective(sp, Min, sum(-item_reward[node][i] * y[i] for i in 1:num_items))
    return sp
 end

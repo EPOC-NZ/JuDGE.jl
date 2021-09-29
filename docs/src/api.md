@@ -34,7 +34,7 @@ JuDGE.get_groups
 
 ## JuDGE Functions
 
-### JuDGE solving functions
+### JuDGE Solving Functions
 ```@docs
 JuDGE.JuDGEModel
 JuDGE.solve(::JuDGEModel)
@@ -42,9 +42,10 @@ JuDGE.branch_and_price
 JuDGE.Termination
 JuDGE.variable_branch
 JuDGE.resolve_subproblems
+JuDGE.set_policy
 ```
 
-### JuDGE macros for subproblems
+### JuDGE Macros for Subproblems
 ```@docs
 JuDGE.@expansion
 JuDGE.@shutdown
@@ -54,25 +55,26 @@ JuDGE.@capitalcosts
 JuDGE.@ongoingcosts
 ```
 
-### JuDGE Output
+### JuDGE Solutions / Output
 ```@docs
-JuDGE.solution_to_dictionary(::JuDGEModel,::String)
+JuDGE.solution_to_dictionary(::JuDGEModel)
+JuDGE.get_active_columns(::JuDGEModel)
 JuDGE.write_solution_to_file(::JuDGEModel,::String)
 JuDGE.print_expansions(::JuDGEModel)
 ```
 
 ## Deterministic Equivalent
 
-### Define and solve DetEq model
+### Define and Solve DetEq Model
 ```@docs
 JuDGE.DetEqModel
 JuDGE.solve(::DetEqModel)
 JuDGE.set_starting_solution!
 ```
 
-### Deterministic Equivalent Output
+### DetEq Solutions / Output
 ```@docs
-JuDGE.solution_to_dictionary(::DetEqModel,::String)
+JuDGE.solution_to_dictionary(::DetEqModel)
 JuDGE.write_solution_to_file(::DetEqModel,::String)
 JuDGE.print_expansions(::DetEqModel)
 ```
@@ -82,4 +84,10 @@ JuDGE.print_expansions(::DetEqModel)
 JuDGE.RiskNeutral()
 JuDGE.Risk(::Float64,::Float64;::Union{Dict{Leaf,Float64},Nothing},::Union{Float64,Nothing},::Float64)
 JuDGE.Risk(::Float64;::Union{Dict{Leaf,Float64},Nothing},::Union{Float64,Nothing},::Float64)
+```
+
+## Other functions
+```@docs
+JuDGE.remove_from_dictionary!
+JuDGE.add_to_dictionary!
 ```
