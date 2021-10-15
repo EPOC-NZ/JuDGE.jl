@@ -23,12 +23,12 @@ item_reward = Dict( zip( collect(mytree,order=:breadth), [ [32, 9, 9, 4, 8],
                                                            [15, 7, 20, 48, 12],
                                                            [10, 30, 54, 32, 30],
                                                            [32, 25, 24, 14, 24] ]) )</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Dict{AbstractTree,Array{Int64,1}} with 7 entries:
+  Leaf node 121                                =&gt; [10, 30, 54, 32, 30]
+  Leaf node 111                                =&gt; [40, 28, 9, 24, 10]
+  Leaf node 112                                =&gt; [15, 7, 20, 48, 12]
+  Subtree rooted at node 1 containing 7 nodes  =&gt; [32, 9, 9, 4, 8]
   Subtree rooted at node 12 containing 3 nodes =&gt; [20, 28, 12, 42, 12]
   Leaf node 122                                =&gt; [32, 25, 24, 14, 24]
-  Leaf node 121                                =&gt; [10, 30, 54, 32, 30]
-  Subtree rooted at node 1 containing 7 nodes  =&gt; [32, 9, 9, 4, 8]
-  Leaf node 112                                =&gt; [15, 7, 20, 48, 12]
-  Leaf node 111                                =&gt; [40, 28, 9, 24, 10]
   Subtree rooted at node 11 containing 3 nodes =&gt; [30, 12, 40, 10, 9]</code></pre><p>We can print the tree again and display a parameter for each node:</p><pre><code class="language-julia hljs">JuDGE.print_tree(mytree,item_reward)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">--1 ([32, 9, 9, 4, 8])
   --11 ([30, 12, 40, 10, 9])
     --111 ([40, 28, 9, 24, 10])
@@ -66,22 +66,16 @@ judy = JuDGEModel(mytree, ConditionallyUniformProbabilities, sub_problems, JuDGE
   Expansion variables: invest </code></pre><p><code>ConditionallyUniformProbabilities</code> simply applies a uniform conditional probability distribution for child nodes. Either a function or a dictionary, which maps nodes to absolute probabilities, can be used here.</p><p>At this point, we have constructed a valid <code>JuDGEModel</code>.</p><p>There are a number of optional stopping criteria that can be set:     <code>abstol</code>, <code>reltol</code>, <code>rlx_abstol</code>, <code>rlx_reltol</code>, <code>time_limit</code>, <code>max_iter</code>.</p><p>These are grouped within a <code>Termination</code> <code>struct</code> that can be defined with as many termination conditions as required (if any condition is met, the solve is stopped). There are defaults for all stopping criteria, so it is not necessary to provide the <code>Termination</code> object to the <code>JuDGE.solve</code> function.</p><p>We can now solve our model by making a call to <code>JuDGE.solve</code>:</p><pre><code class="language-julia hljs">JuDGE.solve(judy,termination=Termination(rlx_abstol=10^-7),verbose=1)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">[ Info: Solving JuDGE model for tree: Subtree rooted at node 1 containing 7 nodes
 
 Relaxed ObjVal  |   Upper Bound   Lower Bound  |  Absolute Diff   Relative Diff  |  Fractional  |      Time     Iter
-  2.250000e+02  |  2.250000e+02          -Inf  |            Inf             NaN  |           0  |    10.868        1
- -1.540000e+02  | -1.540000e+02 -2.520000e+02  |   9.800000e+01    3.888889e-01  |           0  |    11.226        2
- -1.570000e+02  | -1.570000e+02 -2.520000e+02  |   9.500000e+01    3.769841e-01  |           0  |    11.228        3
- -1.640000e+02  | -1.640000e+02 -1.990000e+02  |   3.500000e+01    1.758794e-01  |           0  |    11.230        4
- -1.640000e+02  | -1.640000e+02 -1.930000e+02  |   2.900000e+01    1.502591e-01  |           0  |    11.232        5
- -1.640000e+02  | -1.640000e+02 -1.930000e+02  |   2.900000e+01    1.502591e-01  |           0  |    11.234        6
- -1.640000e+02  | -1.640000e+02 -1.740000e+02  |   1.000000e+01    5.747126e-02  |           0  |    11.235        7
- -1.640000e+02  | -1.640000e+02 -1.740000e+02  |   1.000000e+01    5.747126e-02  |           0  |    11.237        8
- -1.640000e+02  | -1.640000e+02 -1.740000e+02  |   1.000000e+01    5.747126e-02  |           0  |    11.238        9
- -1.640000e+02  | -1.640000e+02 -1.706667e+02  |   6.666667e+00    3.906250e-02  |           0  |    11.240       10
- -1.640000e+02  | -1.640000e+02 -1.690000e+02  |   5.000000e+00    2.958580e-02  |           0  |    11.241       11
- -1.640000e+02  | -1.640000e+02 -1.656667e+02  |   1.666667e+00    1.006036e-02  |           0  |    11.243       12
- -1.640000e+02  | -1.640000e+02 -1.640000e+02  |   0.000000e+00    0.000000e+00  |           0  |    11.245       13
+  2.250000e+02  |  2.250000e+02          -Inf  |            Inf             NaN  |           0  |    15.445        1
+ -1.500000e+02  | -1.500000e+02 -2.540000e+02  |   1.040000e+02    4.094488e-01  |           0  |    15.947        2
+ -1.580000e+02  | -1.500000e+02 -2.540000e+02  |   9.600000e+01    3.779528e-01  |           7  |    15.950        3
+ -1.636667e+02  | -1.500000e+02 -1.740000e+02  |   1.033333e+01    5.938697e-02  |           6  |    15.953        4
+ -1.640000e+02  | -1.640000e+02 -1.740000e+02  |   1.000000e+01    5.747126e-02  |           0  |    15.957        5
+ -1.640000e+02  | -1.640000e+02 -1.740000e+02  |   1.000000e+01    5.747126e-02  |           0  |    15.960        6
+ -1.640000e+02  | -1.640000e+02 -1.640000e+02  |   0.000000e+00    0.000000e+00  |           0  |    15.962        7
 
 Convergence criteria met.</code></pre><p>Currently, we recommend using JuDGE with Gurobi as the subproblem and master problem solvers. Any solvers can be specified, but the master problem must return duals, and an interior point method is recommended for reliable convergence. The subproblems can be solved with any method. (If you do not solve the subproblems to a zero bound-gap, the upper and lower bounds will not fully converge; it is therefore also necessary to set appropriate convergence tolerances in the master problem.)</p><p>We can view the optimal solution to our problem by calling</p><pre><code class="language-julia hljs">println(&quot;Objective: &quot;*string(JuDGE.get_objval(judy))
-JuDGE.print_expansions(judy)</code></pre><p>Finally, if we want to recover the optimal solutions for the nodes, we must fix the investments and resolve each subproblem, after which we can write the solution to a CSV file.</p><pre><code class="language-julia hljs">println(&quot;Re-solved Objective: &quot; * string(resolve_subproblems(judy)))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Re-solved Objective: -164.0</code></pre><pre><code class="language-julia hljs">JuDGE.write_solution_to_file(judy,joinpath(@__DIR__,&quot;knapsack_solution.csv&quot;))</code></pre><h2 id="Tutorial-2:-Formatting-output"><a class="docs-heading-anchor" href="#Tutorial-2:-Formatting-output">Tutorial 2: Formatting output</a><a id="Tutorial-2:-Formatting-output-1"></a><a class="docs-heading-anchor-permalink" href="#Tutorial-2:-Formatting-output" title="Permalink"></a></h2><p>Since the expansion variables are all binary, the <code>print_expansions</code> function doesn&#39;t directly convey how much capacity is built. In order to output more information about the capacity it&#39;s possible to write a custom function that is supplied as an optional argument <code>format</code>. First, let us simply provide the capacity associated with each decision.</p><pre><code class="language-julia hljs">function format_output(s::Symbol,value)
+JuDGE.print_expansions(judy)</code></pre><p>Finally, if we want to recover the optimal solutions for the nodes, we must fix the investments and resolve each subproblem, after which we can write the solution to a CSV file.</p><pre><code class="language- hljs">println(&quot;Re-solved Objective: &quot; * string(resolve_subproblems(judy)))</code></pre><pre><code class="language-julia hljs">JuDGE.write_solution_to_file(judy,joinpath(@__DIR__,&quot;knapsack_solution.csv&quot;))</code></pre><h2 id="Tutorial-2:-Formatting-output"><a class="docs-heading-anchor" href="#Tutorial-2:-Formatting-output">Tutorial 2: Formatting output</a><a id="Tutorial-2:-Formatting-output-1"></a><a class="docs-heading-anchor-permalink" href="#Tutorial-2:-Formatting-output" title="Permalink"></a></h2><p>Since the expansion variables are all binary, the <code>print_expansions</code> function doesn&#39;t directly convey how much capacity is built. In order to output more information about the capacity it&#39;s possible to write a custom function that is supplied as an optional argument <code>format</code>. First, let us simply provide the capacity associated with each decision.</p><pre><code class="language-julia hljs">function format_output(s::Symbol,value)
    if s==:invest
       output=Dict{Int,Float64}()
       for i in 1:num_invest
@@ -94,14 +88,16 @@ end
 
 JuDGE.print_expansions(judy, format=format_output)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
 JuDGE Expansions
-Node 11: &quot;invest[4]&quot; 3.0
-Node 11: &quot;invest[5]&quot; 3.0
-Node 112: &quot;invest[6]&quot; 3.0
+Node 11: &quot;invest[2]&quot; 2.0
+Node 11: &quot;invest[3]&quot; 2.0
+Node 11: &quot;invest[1]&quot; 2.0
+Node 112: &quot;invest[4]&quot; 3.0
+Node 112: &quot;invest[5]&quot; 3.0
 Node 12: &quot;invest[4]&quot; 3.0
 Node 12: &quot;invest[5]&quot; 3.0
 Node 12: &quot;invest[6]&quot; 3.0
 Node 121: &quot;invest[3]&quot; 2.0
-Node 121: &quot;invest[1]&quot; 2.0
+Node 121: &quot;invest[1]&quot; 2.0000000000000004
 Node 122: &quot;invest[2]&quot; 2.0
 Node 122: &quot;invest[3]&quot; 2.0
 Node 122: &quot;invest[1]&quot; 2.0</code></pre><p>We can also aggregate the capacities of all the expansions.</p><pre><code class="language-julia hljs">function format_output(s::Symbol,value)
@@ -114,9 +110,9 @@ end
 JuDGE.print_expansions(judy, format=format_output)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">
 JuDGE Expansions
 Node 11: &quot;invest&quot; 6.0
-Node 112: &quot;invest&quot; 3.0
+Node 112: &quot;invest&quot; 6.0
 Node 12: &quot;invest&quot; 9.0
-Node 121: &quot;invest&quot; 4.0
+Node 121: &quot;invest&quot; 3.9999999999999996
 Node 122: &quot;invest&quot; 6.0</code></pre><h2 id="Tutorial-3:-Ongoing-costs"><a class="docs-heading-anchor" href="#Tutorial-3:-Ongoing-costs">Tutorial 3: Ongoing costs</a><a id="Tutorial-3:-Ongoing-costs-1"></a><a class="docs-heading-anchor-permalink" href="#Tutorial-3:-Ongoing-costs" title="Permalink"></a></h2><p>Depending on the capacity planning application that JuDGE is being applied to there may be ongoing upkeep / maintenance costs for the expansions. This is modelled within JuDGE by using the <code>@ongoingcosts</code> macro to specify the cost of the expansions being available at each node in the scenario tree. (That is, the corresponding expansion variable has been set to 1 in the master problem.) If there are costs that can be avoided, by not making use of capacity that is granted, then this should be modelled within the <code>@objective</code>.</p><pre><code class="language-julia hljs">function sub_problems_ongoing(node)
    sp = Model(JuDGE_SP_Solver)
    @expansion(sp, invest[1:num_invest], Bin)
@@ -144,20 +140,21 @@ JuDGE.print_expansions(judy, format=format_output)</code></pre><pre class="docum
 [ Info: Solving JuDGE model for tree: Subtree rooted at node 1 containing 7 nodes
 
 Relaxed ObjVal  |   Upper Bound   Lower Bound  |  Absolute Diff   Relative Diff  |  Fractional  |      Time     Iter
-  3.150000e+02  |  3.150000e+02          -Inf  |            Inf             NaN  |           0  |     0.002        1
- -1.042500e+02  | -1.042500e+02 -2.512500e+02  |   1.470000e+02    5.850746e-01  |           0  |     0.004        2
- -1.230000e+02  | -1.230000e+02 -2.512500e+02  |   1.282500e+02    5.104478e-01  |           0  |     0.007        3
- -1.301250e+02  | -1.230000e+02 -2.030000e+02  |   7.287500e+01    3.589901e-01  |           9  |     0.008        4
- -1.322500e+02  | -1.322500e+02 -1.887500e+02  |   5.650000e+01    2.993377e-01  |           0  |     0.011        5
- -1.338750e+02  | -1.322500e+02 -1.768750e+02  |   4.300000e+01    2.431095e-01  |           4  |     0.013        6
- -1.341250e+02  | -1.322500e+02 -1.648750e+02  |   3.075000e+01    1.865049e-01  |           6  |     0.015        7
- -1.357500e+02  | -1.357500e+02 -1.550000e+02  |   1.925000e+01    1.241935e-01  |           0  |     0.017        8
- -1.357500e+02  | -1.357500e+02 -1.432500e+02  |   7.500000e+00    5.235602e-02  |           0  |     0.019        9
- -1.357500e+02  | -1.357500e+02 -1.368000e+02  |   1.050000e+00    7.675439e-03  |           0  |     0.021       10
- -1.357500e+02  | -1.357500e+02 -1.368000e+02  |   1.050000e+00    7.675439e-03  |           0  |     0.023       11
- -1.357500e+02  | -1.357500e+02 -1.360000e+02  |   2.500000e-01    1.838235e-03  |           0  |     0.026       12
- -1.357500e+02  | -1.357500e+02 -1.358750e+02  |   1.250000e-01    9.199632e-04  |           0  |     0.028       13
- -1.357500e+02  | -1.357500e+02 -1.357500e+02  |   0.000000e+00    0.000000e+00  |           0  |     0.031       14
+  3.150000e+02  |  3.150000e+02          -Inf  |            Inf             NaN  |           0  |     0.003        1
+ -9.750000e+01  | -9.750000e+01 -2.535000e+02  |   1.560000e+02    6.153846e-01  |           0  |     0.006        2
+ -1.250000e+02  | -1.250000e+02 -2.535000e+02  |   1.285000e+02    5.069034e-01  |           0  |     0.008        3
+ -1.288750e+02  | -1.250000e+02 -1.645000e+02  |   3.562500e+01    2.165653e-01  |           8  |     0.011        4
+ -1.327500e+02  | -1.250000e+02 -1.645000e+02  |   3.175000e+01    1.930091e-01  |           6  |     0.014        5
+ -1.332500e+02  | -1.250000e+02 -1.552500e+02  |   2.200000e+01    1.417069e-01  |           5  |     0.017        6
+ -1.333333e+02  | -1.250000e+02 -1.552500e+02  |   2.191667e+01    1.411702e-01  |           8  |     0.019        7
+ -1.357500e+02  | -1.357500e+02 -1.410000e+02  |   5.250000e+00    3.723404e-02  |           0  |     0.022        8
+ -1.357500e+02  | -1.357500e+02 -1.410000e+02  |   5.250000e+00    3.723404e-02  |           0  |     0.025        9
+ -1.357500e+02  | -1.357500e+02 -1.393750e+02  |   3.625000e+00    2.600897e-02  |           0  |     0.028       10
+ -1.357500e+02  | -1.357500e+02 -1.363750e+02  |   6.250000e-01    4.582951e-03  |           0  |     0.031       11
+ -1.357500e+02  | -1.357500e+02 -1.360000e+02  |   2.500000e-01    1.838235e-03  |           0  |     0.034       12
+ -1.357500e+02  | -1.357500e+02 -1.360000e+02  |   2.500000e-01    1.838235e-03  |           0  |     0.037       13
+ -1.357500e+02  | -1.357500e+02 -1.358750e+02  |   1.250000e-01    9.199632e-04  |           0  |     0.041       14
+ -1.357500e+02  | -1.357500e+02 -1.357500e+02  |   0.000000e+00    0.000000e+00  |           0  |     0.044       15
 
 Convergence criteria met.
 Objective: -135.75
@@ -174,9 +171,9 @@ Building deterministic equivalent problem...Complete
 Solving deterministic equivalent formulation...*     0: obj =   0.000000000e+00 inf =   0.000e+00 (4)
 *   109: obj =  -1.645000000e+02 inf =   2.220e-16 (0)
 +   109: mip =     not found yet &gt;=              -inf        (1; 0)
-+   160: &gt;&gt;&gt;&gt;&gt;  -1.600000000e+02 &gt;=  -1.640000000e+02   2.5% (19; 0)
-+   163: &gt;&gt;&gt;&gt;&gt;  -1.640000000e+02 &gt;=  -1.640000000e+02   0.0% (18; 1)
-+   163: mip =  -1.640000000e+02 &gt;=     tree is empty   0.0% (0; 37)
++   163: &gt;&gt;&gt;&gt;&gt;  -1.600000000e+02 &gt;=  -1.640000000e+02   2.5% (20; 0)
++   167: &gt;&gt;&gt;&gt;&gt;  -1.640000000e+02 &gt;=  -1.640000000e+02   0.0% (18; 3)
++   167: mip =  -1.640000000e+02 &gt;=     tree is empty   0.0% (0; 39)
 Solved.</code></pre><p>The solution can be printed to the REPL or a CSV in the same way as a <code>JUDGEModel</code>.</p><pre><code class="language-julia hljs">println(&quot;Deterministic Equivalent Objective: &quot; * string(objective_value(deteq.problem)))
 JuDGE.print_expansions(deteq, format=format_output)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Deterministic Equivalent Objective: -164.0
 
@@ -210,24 +207,23 @@ JuDGE.print_expansions(judy, format=format_output)</code></pre><pre class="docum
 [ Info: Solving JuDGE model for tree: Subtree rooted at node 1 containing 7 nodes
 
 Relaxed ObjVal  |   Upper Bound   Lower Bound  |  Absolute Diff   Relative Diff  |  Fractional  |      Time     Iter
-           Inf  |           Inf          -Inf  |            Inf             NaN  |           0  |     0.002        1
-  0.000000e+00  |  0.000000e+00          -Inf  |            Inf             NaN  |           0  |     0.003        2
- -8.325000e+01  | -8.325000e+01 -3.492500e+02  |   2.660000e+02    7.616321e-01  |           0  |     0.005        3
- -1.152500e+02  | -8.325000e+01 -3.052500e+02  |   1.900000e+02    6.224406e-01  |          14  |     0.007        4
- -1.167083e+02  | -8.325000e+01 -2.297500e+02  |   1.130417e+02    4.920203e-01  |          13  |     0.009        5
- -1.187083e+02  | -8.325000e+01 -2.205833e+02  |   1.018750e+02    4.618436e-01  |          12  |     0.011        6
- -1.205833e+02  | -8.325000e+01 -2.070000e+02  |   8.641667e+01    4.174718e-01  |          11  |     0.013        7
- -1.218307e+02  | -8.325000e+01 -2.041875e+02  |   8.235677e+01    4.033389e-01  |          13  |     0.016        8
- -1.626875e+02  | -8.325000e+01 -1.848151e+02  |   2.212760e+01    1.197283e-01  |          12  |     0.018        9
- -1.641548e+02  | -8.325000e+01 -1.848151e+02  |   2.066034e+01    1.117893e-01  |          14  |     0.021       10
- -1.665833e+02  | -8.325000e+01 -1.777143e+02  |   1.113095e+01    6.263398e-02  |          10  |     0.024       11
- -1.666111e+02  | -8.325000e+01 -1.777143e+02  |   1.110317e+01    6.247767e-02  |          11  |     0.026       12
- -1.668333e+02  | -8.325000e+01 -1.777143e+02  |   1.088095e+01    6.122722e-02  |          10  |     0.029       13
- -1.668333e+02  | -8.325000e+01 -1.745000e+02  |   7.666667e+00    4.393505e-02  |          10  |     0.032       14
- -1.668333e+02  | -8.325000e+01 -1.708333e+02  |   4.000000e+00    2.341463e-02  |          10  |     0.034       15
- -1.668333e+02  | -8.325000e+01 -1.688333e+02  |   2.000000e+00    1.184600e-02  |          10  |     0.036       16
- -1.668333e+02  | -8.325000e+01 -1.668333e+02  |  -2.842171e-14   -1.703599e-16  |          10  |     0.039       17
- -1.668333e+02  | -1.635000e+02 -1.668333e+02  |   3.333333e+00    1.998002e-02  |           0  |     0.070       18*
+           Inf  |           Inf          -Inf  |            Inf             NaN  |           0  |     0.004        1
+  0.000000e+00  |  0.000000e+00          -Inf  |            Inf             NaN  |           0  |     0.006        2
+ -1.095000e+02  | -1.095000e+02 -2.840000e+02  |   1.745000e+02    6.144366e-01  |           0  |     0.010        3
+ -1.095000e+02  | -1.095000e+02 -2.752500e+02  |   1.657500e+02    6.021798e-01  |           0  |     0.012        4
+ -1.168750e+02  | -1.095000e+02 -2.752500e+02  |   1.583750e+02    5.753860e-01  |          11  |     0.017        5
+ -1.183750e+02  | -1.095000e+02 -2.216250e+02  |   1.032500e+02    4.658770e-01  |           9  |     0.021        6
+ -1.205398e+02  | -1.095000e+02 -2.148750e+02  |   9.433523e+01    4.390237e-01  |          13  |     0.024        7
+ -1.235250e+02  | -1.095000e+02 -1.980057e+02  |   7.448068e+01    3.761543e-01  |          13  |     0.027        8
+ -1.643750e+02  | -1.095000e+02 -1.790125e+02  |   1.463750e+01    8.176803e-02  |          14  |     0.030        9
+ -1.658083e+02  | -1.095000e+02 -1.790125e+02  |   1.320417e+01    7.376114e-02  |          12  |     0.033       10
+ -1.663750e+02  | -1.095000e+02 -1.790125e+02  |   1.263750e+01    7.059563e-02  |          10  |     0.037       11
+ -1.668333e+02  | -1.095000e+02 -1.774583e+02  |   1.062500e+01    5.987321e-02  |          10  |     0.042       12
+ -1.668333e+02  | -1.095000e+02 -1.774583e+02  |   1.062500e+01    5.987321e-02  |          10  |     0.047       13
+ -1.668333e+02  | -1.095000e+02 -1.766667e+02  |   9.833333e+00    5.566038e-02  |          10  |     0.050       14
+ -1.668333e+02  | -1.095000e+02 -1.698333e+02  |   3.000000e+00    1.766438e-02  |          10  |     0.053       15
+ -1.668333e+02  | -1.095000e+02 -1.668333e+02  |   0.000000e+00    0.000000e+00  |          10  |     0.056       16
+ -1.668333e+02  | -1.635000e+02 -1.668333e+02  |   3.333333e+00    1.998002e-02  |           0  |     0.094       17*
 
 Convergence criteria met.
 Objective: -163.5
@@ -249,161 +245,158 @@ Model 1 of 1. UB: Inf, LB:-Inf, Time: 0.0s
 [ Info: Solving JuDGE model for tree: Subtree rooted at node 1 containing 7 nodes
 
 Relaxed ObjVal  |   Upper Bound   Lower Bound  |  Absolute Diff   Relative Diff  |  Fractional  |      Time     Iter
-           Inf  |           Inf          -Inf  |            Inf             NaN  |           0  |     0.003        1
-  0.000000e+00  |  0.000000e+00          -Inf  |            Inf             NaN  |           0  |     0.004        2
- -8.325000e+01  | -8.325000e+01 -3.492500e+02  |   2.660000e+02    7.616321e-01  |           0  |     0.006        3
- -1.152500e+02  | -8.325000e+01 -3.052500e+02  |   1.900000e+02    6.224406e-01  |          14  |     0.008        4
- -1.167083e+02  | -8.325000e+01 -2.297500e+02  |   1.130417e+02    4.920203e-01  |          13  |     0.010        5
- -1.187083e+02  | -8.325000e+01 -2.205833e+02  |   1.018750e+02    4.618436e-01  |          12  |     0.012        6
- -1.205833e+02  | -8.325000e+01 -2.070000e+02  |   8.641667e+01    4.174718e-01  |          11  |     0.014        7
- -1.218307e+02  | -8.325000e+01 -2.041875e+02  |   8.235677e+01    4.033389e-01  |          13  |     0.016        8
- -1.626875e+02  | -8.325000e+01 -1.848151e+02  |   2.212760e+01    1.197283e-01  |          12  |     0.019        9
- -1.641548e+02  | -8.325000e+01 -1.848151e+02  |   2.066034e+01    1.117893e-01  |          14  |     0.022       10
- -1.665833e+02  | -8.325000e+01 -1.777143e+02  |   1.113095e+01    6.263398e-02  |          10  |     0.025       11
- -1.666111e+02  | -8.325000e+01 -1.777143e+02  |   1.110317e+01    6.247767e-02  |          11  |     0.027       12
- -1.668333e+02  | -8.325000e+01 -1.777143e+02  |   1.088095e+01    6.122722e-02  |          10  |     0.030       13
- -1.668333e+02  | -8.325000e+01 -1.745000e+02  |   7.666667e+00    4.393505e-02  |          10  |     0.033       14
- -1.668333e+02  | -8.325000e+01 -1.708333e+02  |   4.000000e+00    2.341463e-02  |          10  |     0.035       15
- -1.668333e+02  | -8.325000e+01 -1.688333e+02  |   2.000000e+00    1.184600e-02  |          10  |     0.038       16
- -1.668333e+02  | -8.325000e+01 -1.668333e+02  |  -2.842171e-14   -1.703599e-16  |          10  |     0.040       17
- -1.668333e+02  | -1.635000e+02 -1.668333e+02  |   3.333333e+00    1.998002e-02  |           0  |     0.045       18*
+           Inf  |           Inf          -Inf  |            Inf             NaN  |           0  |     0.004        1
+  0.000000e+00  |  0.000000e+00          -Inf  |            Inf             NaN  |           0  |     0.006        2
+ -1.095000e+02  | -1.095000e+02 -2.840000e+02  |   1.745000e+02    6.144366e-01  |           0  |     0.009        3
+ -1.095000e+02  | -1.095000e+02 -2.752500e+02  |   1.657500e+02    6.021798e-01  |           0  |     0.012        4
+ -1.168750e+02  | -1.095000e+02 -2.752500e+02  |   1.583750e+02    5.753860e-01  |          11  |     0.015        5
+ -1.183750e+02  | -1.095000e+02 -2.216250e+02  |   1.032500e+02    4.658770e-01  |           9  |     0.018        6
+ -1.205398e+02  | -1.095000e+02 -2.148750e+02  |   9.433523e+01    4.390237e-01  |          13  |     0.022        7
+ -1.235250e+02  | -1.095000e+02 -1.980057e+02  |   7.448068e+01    3.761543e-01  |          13  |     0.025        8
+ -1.643750e+02  | -1.095000e+02 -1.790125e+02  |   1.463750e+01    8.176803e-02  |          14  |     0.029        9
+ -1.658083e+02  | -1.095000e+02 -1.790125e+02  |   1.320417e+01    7.376114e-02  |          12  |     0.032       10
+ -1.663750e+02  | -1.095000e+02 -1.790125e+02  |   1.263750e+01    7.059563e-02  |          10  |     0.037       11
+ -1.668333e+02  | -1.095000e+02 -1.774583e+02  |   1.062500e+01    5.987321e-02  |          10  |     0.041       12
+ -1.668333e+02  | -1.095000e+02 -1.774583e+02  |   1.062500e+01    5.987321e-02  |          10  |     0.045       13
+ -1.668333e+02  | -1.095000e+02 -1.766667e+02  |   9.833333e+00    5.566038e-02  |          10  |     0.049       14
+ -1.668333e+02  | -1.095000e+02 -1.698333e+02  |   3.000000e+00    1.766438e-02  |          10  |     0.053       15
+ -1.668333e+02  | -1.095000e+02 -1.668333e+02  |   0.000000e+00    0.000000e+00  |          10  |     0.056       16
+ -1.668333e+02  | -1.635000e+02 -1.668333e+02  |   3.333333e+00    1.998002e-02  |           0  |     0.060       17*
 
 Convergence criteria met.
 
 Attempting to branch.
 Adding 2 new nodes to B&amp;P tree.
 
-Model 2 of 3. UB: -163.5, LB:-166.83333333333334, Time: 0.298s
- -1.650000e+02  |           Inf -1.668333e+02  |   1.833333e+00    1.098901e-02  |           5  |     0.558        1
- -1.652500e+02  |           Inf -1.665000e+02  |   1.250000e+00    7.507508e-03  |           6  |     0.561        2
- -1.652500e+02  |           Inf -1.660000e+02  |   7.500000e-01    4.518072e-03  |           6  |     0.564        3
- -1.652500e+02  |           Inf -1.656250e+02  |   3.750000e-01    2.264151e-03  |           6  |     0.567        4
- -1.652500e+02  |           Inf -1.656250e+02  |   3.750000e-01    2.264151e-03  |           6  |     0.570        5
- -1.655000e+02  |           Inf -1.656250e+02  |   1.250000e-01    7.547170e-04  |           6  |     0.572        6
- -1.655000e+02  |           Inf -1.655000e+02  |   0.000000e+00    0.000000e+00  |           6  |     0.575        7
- -1.655000e+02  | -1.635000e+02 -1.655000e+02  |   2.000000e+00    1.208459e-02  |           0  |     0.577        8*
+Model 2 of 3. UB: -163.5, LB:-166.83333333333334, Time: 0.409s
+ -1.655000e+02  |           Inf -1.668333e+02  |   1.333333e+00    7.992008e-03  |           6  |     0.703        1
+ -1.655000e+02  |           Inf -1.668333e+02  |   1.333333e+00    7.992008e-03  |           6  |     0.707        2
+ -1.655000e+02  |           Inf -1.656250e+02  |   1.250000e-01    7.547170e-04  |           6  |     0.712        3
+ -1.655000e+02  |           Inf -1.655000e+02  |   0.000000e+00    0.000000e+00  |           6  |     0.716        4
+ -1.655000e+02  | -1.635000e+02 -1.655000e+02  |   2.000000e+00    1.208459e-02  |           0  |     0.717        5*
 
 Convergence criteria met.
 
 Attempting to branch.
 Adding 2 new nodes to B&amp;P tree.
 
-Model 3 of 5. UB: -163.5, LB:-166.83333333333334, Time: 0.876s
- -1.648333e+02  |           Inf -1.668333e+02  |   2.000000e+00    1.198801e-02  |           3  |     0.212        1
- -1.648333e+02  |           Inf -1.668333e+02  |   2.000000e+00    1.198801e-02  |           3  |     0.215        2
- -1.655000e+02  |           Inf -1.668333e+02  |   1.333333e+00    7.992008e-03  |          10  |     0.217        3
- -1.655000e+02  |           Inf -1.655833e+02  |   8.333333e-02    5.032713e-04  |          10  |     0.220        4
- -1.655000e+02  |           Inf -1.655833e+02  |   8.333333e-02    5.032713e-04  |          10  |     0.223        5
- -1.655000e+02  |           Inf -1.655833e+02  |   8.333333e-02    5.032713e-04  |          10  |     0.226        6
- -1.655000e+02  |           Inf -1.655000e+02  |   0.000000e+00    0.000000e+00  |          10  |     0.228        7
- -1.655000e+02  | -1.635000e+02 -1.655000e+02  |   2.000000e+00    1.208459e-02  |           0  |     0.230        8*
+Model 3 of 5. UB: -163.5, LB:-166.83333333333334, Time: 1.127s
+ -1.655000e+02  |           Inf -1.668333e+02  |   1.333333e+00    7.992008e-03  |          10  |     0.382        1
+ -1.655000e+02  |           Inf -1.668333e+02  |   1.333333e+00    7.992008e-03  |          10  |     0.387        2
+ -1.655000e+02  |           Inf -1.661250e+02  |   6.250000e-01    3.762227e-03  |          10  |     0.391        3
+ -1.655000e+02  |           Inf -1.659375e+02  |   4.375000e-01    2.636535e-03  |          10  |     0.396        4
+ -1.655000e+02  |           Inf -1.655000e+02  |   0.000000e+00    0.000000e+00  |          10  |     0.399        5
+ -1.655000e+02  | -1.635000e+02 -1.655000e+02  |   2.000000e+00    1.208459e-02  |           0  |     0.401        6*
 
 Convergence criteria met.
 
 Attempting to branch.
 Adding 2 new nodes to B&amp;P tree.
 
-Model 4 of 7. UB: -163.5, LB:-165.5, Time: 1.106s
- -1.636250e+02  |           Inf -1.655000e+02  |   1.875000e+00    1.132931e-02  |           6  |     0.123        1
- -1.640000e+02  | -1.640000e+02 -1.644375e+02  |   4.375000e-01    2.660585e-03  |           0  |     0.126        2
- -1.640000e+02  | -1.640000e+02 -1.644375e+02  |   4.375000e-01    2.660585e-03  |           0  |     0.130        3
- -1.640000e+02  | -1.640000e+02 -1.641250e+02  |   1.250000e-01    7.616146e-04  |           0  |     0.133        4
- -1.640000e+02  | -1.640000e+02 -1.640000e+02  |   0.000000e+00    0.000000e+00  |           0  |     0.136        5
+Model 4 of 7. UB: -163.5, LB:-165.5, Time: 1.529s
+ -1.635000e+02  |           Inf -1.655000e+02  |   2.000000e+00    1.208459e-02  |           2  |     0.175        1
+ -1.640000e+02  | -1.640000e+02 -1.648750e+02  |   8.750000e-01    5.307051e-03  |           0  |     0.179        2
+ -1.640000e+02  | -1.640000e+02 -1.648750e+02  |   8.750000e-01    5.307051e-03  |           0  |     0.183        3
+ -1.640000e+02  | -1.640000e+02 -1.640000e+02  |   0.000000e+00    0.000000e+00  |           0  |     0.187        4
 
 Convergence criteria met.
 
 Attempting to branch.
 
-Model 5 of 7. UB: -164.0, LB:-165.5, Time: 1.243s
- -1.652500e+02  |           Inf -1.655000e+02  |   2.500000e-01    1.510574e-03  |           4  |     0.004        1
- -1.652500e+02  |           Inf -1.655000e+02  |   2.500000e-01    1.510574e-03  |           4  |     0.007        2
- -1.652500e+02  |           Inf -1.652500e+02  |   0.000000e+00    0.000000e+00  |           4  |     0.010        3
- -1.652500e+02  | -1.640000e+02 -1.652500e+02  |   1.250000e+00    7.564297e-03  |           0  |     0.012        4*
+Model 5 of 7. UB: -164.0, LB:-165.5, Time: 1.717s
+ -1.652500e+02  |           Inf -1.655000e+02  |   2.500000e-01    1.510574e-03  |           4  |     0.005        1
+ -1.652500e+02  |           Inf -1.655000e+02  |   2.500000e-01    1.510574e-03  |           4  |     0.009        2
+ -1.652500e+02  |           Inf -1.652500e+02  |   0.000000e+00    0.000000e+00  |           4  |     0.012        3
+ -1.652500e+02  | -1.640000e+02 -1.652500e+02  |   1.250000e+00    7.564297e-03  |           0  |     0.014        4*
 
 Convergence criteria met.
 
 Attempting to branch.
 Adding 2 new nodes to B&amp;P tree.
 
-Model 6 of 9. UB: -164.0, LB:-165.5, Time: 1.255s
- -1.620000e+02  |           Inf -1.655000e+02  |   3.500000e+00    2.114804e-02  |           5  |     0.005        1
- -1.621250e+02  |           Inf -1.635000e+02  |   1.375000e+00    8.409786e-03  |           7  |     0.008        2
+Model 6 of 9. UB: -164.0, LB:-165.5, Time: 1.731s
+ -1.620000e+02  |           Inf -1.636250e+02  |   1.625000e+00    9.931245e-03  |           5  |     0.006        1
 
 Dominated by incumbent.
 
-Model 7 of 9. UB: -164.0, LB:-165.5, Time: 1.263s
- -1.648333e+02  |           Inf -1.655000e+02  |   6.666667e-01    4.028197e-03  |           3  |     0.004        1
- -1.648333e+02  |           Inf -1.655000e+02  |   6.666667e-01    4.028197e-03  |           3  |     0.007        2
- -1.648333e+02  |           Inf -1.655000e+02  |   6.666667e-01    4.028197e-03  |           3  |     0.009        3
- -1.648333e+02  |           Inf -1.650833e+02  |   2.500000e-01    1.514387e-03  |           3  |     0.012        4
- -1.648333e+02  |           Inf -1.648333e+02  |   0.000000e+00    0.000000e+00  |           3  |     0.015        5
- -1.648333e+02  | -1.635000e+02 -1.648333e+02  |   1.333333e+00    8.088979e-03  |           0  |     0.016        6*
+Model 7 of 9. UB: -164.0, LB:-165.5, Time: 1.738s
+ -1.648333e+02  |           Inf -1.655000e+02  |   6.666667e-01    4.028197e-03  |           3  |     0.013        1
+ -1.648333e+02  |           Inf -1.655000e+02  |   6.666667e-01    4.028197e-03  |           3  |     0.017        2
+ -1.648333e+02  |           Inf -1.655000e+02  |   6.666667e-01    4.028197e-03  |           3  |     0.020        3
+ -1.648333e+02  |           Inf -1.649583e+02  |   1.250000e-01    7.577671e-04  |           3  |     0.023        4
+ -1.648333e+02  |           Inf -1.648333e+02  |   0.000000e+00    0.000000e+00  |           3  |     0.027        5
+ -1.648333e+02  | -1.635000e+02 -1.648333e+02  |   1.333333e+00    8.088979e-03  |           0  |     0.029        6*
 
 Convergence criteria met.
 
 Attempting to branch.
 Adding 2 new nodes to B&amp;P tree.
 
-Model 8 of 11. UB: -164.0, LB:-165.25, Time: 1.28s
- -1.640000e+02  | -1.640000e+02 -1.652500e+02  |   1.250000e+00    7.564297e-03  |           0  |     0.004        1
- -1.640000e+02  | -1.640000e+02 -1.652500e+02  |   1.250000e+00    7.564297e-03  |           0  |     0.007        2
- -1.640000e+02  | -1.640000e+02 -1.645000e+02  |   5.000000e-01    3.039514e-03  |           0  |     0.010        3
- -1.640000e+02  | -1.640000e+02 -1.640000e+02  |   0.000000e+00    0.000000e+00  |           0  |     0.013        4
+Model 8 of 11. UB: -164.0, LB:-165.25, Time: 1.768s
+ -1.640000e+02  | -1.640000e+02 -1.652500e+02  |   1.250000e+00    7.564297e-03  |           0  |     0.006        1
+ -1.640000e+02  | -1.640000e+02 -1.652500e+02  |   1.250000e+00    7.564297e-03  |           0  |     0.010        2
+ -1.640000e+02  | -1.640000e+02 -1.642500e+02  |   2.500000e-01    1.522070e-03  |           0  |     0.014        3
+ -1.640000e+02  | -1.640000e+02 -1.640000e+02  |   0.000000e+00    0.000000e+00  |           0  |     0.018        4
 
 Convergence criteria met.
 
 Attempting to branch.
 
-Model 9 of 11. UB: -164.0, LB:-165.25, Time: 1.294s
- -1.640000e+02  | -1.640000e+02 -1.652500e+02  |   1.250000e+00    7.564297e-03  |           0  |     0.004        1
- -1.640000e+02  | -1.640000e+02 -1.652500e+02  |   1.250000e+00    7.564297e-03  |           0  |     0.007        2
- -1.640000e+02  | -1.640000e+02 -1.642500e+02  |   2.500000e-01    1.522070e-03  |           0  |     0.010        3
- -1.640000e+02  | -1.640000e+02 -1.642500e+02  |   2.500000e-01    1.522070e-03  |           0  |     0.013        4
- -1.640000e+02  | -1.640000e+02 -1.640000e+02  |   0.000000e+00    0.000000e+00  |           0  |     0.016        5
+Model 9 of 11. UB: -164.0, LB:-165.25, Time: 1.786s
+ -1.640000e+02  | -1.640000e+02 -1.652500e+02  |   1.250000e+00    7.564297e-03  |           0  |     0.006        1
+ -1.640000e+02  | -1.640000e+02 -1.645000e+02  |   5.000000e-01    3.039514e-03  |           0  |     0.009        2
+ -1.640000e+02  | -1.640000e+02 -1.645000e+02  |   5.000000e-01    3.039514e-03  |           0  |     0.013        3
+ -1.640000e+02  | -1.640000e+02 -1.640000e+02  |   0.000000e+00    0.000000e+00  |           0  |     0.017        4
 
 Convergence criteria met.
 
 Attempting to branch.
 
-Model 10 of 11. UB: -164.0, LB:-164.83333333333331, Time: 1.31s
- -1.645000e+02  |           Inf -1.648333e+02  |   3.333333e-01    2.022245e-03  |           2  |     0.005        1
- -1.645000e+02  |           Inf -1.645000e+02  |   0.000000e+00    0.000000e+00  |           2  |     0.008        2
- -1.645000e+02  | -1.635000e+02 -1.645000e+02  |   1.000000e+00    6.079027e-03  |           0  |     0.009        3*
+Model 10 of 11. UB: -164.0, LB:-164.83333333333334, Time: 1.804s
+ -1.645000e+02  |           Inf -1.648333e+02  |   3.333333e-01    2.022245e-03  |           2  |     0.006        1
+ -1.645000e+02  |           Inf -1.648333e+02  |   3.333333e-01    2.022245e-03  |           2  |     0.009        2
+ -1.645000e+02  |           Inf -1.648333e+02  |   3.333333e-01    2.022245e-03  |           2  |     0.012        3
+ -1.645000e+02  |           Inf -1.648333e+02  |   3.333333e-01    2.022245e-03  |           2  |     0.015        4
+ -1.645000e+02  |           Inf -1.648333e+02  |   3.333333e-01    2.022245e-03  |           2  |     0.019        5
+ -1.645000e+02  |           Inf -1.645000e+02  |   0.000000e+00    0.000000e+00  |           2  |     0.022        6
+ -1.645000e+02  | -1.635000e+02 -1.645000e+02  |   1.000000e+00    6.079027e-03  |           0  |     0.023        7*
 
 Convergence criteria met.
 
 Attempting to branch.
 Adding 2 new nodes to B&amp;P tree.
 
-Model 11 of 13. UB: -164.0, LB:-164.83333333333331, Time: 1.319s
- -1.640000e+02  | -1.640000e+02 -1.648333e+02  |   8.333333e-01    5.055612e-03  |           0  |     0.005        1
- -1.640000e+02  | -1.640000e+02 -1.648333e+02  |   8.333333e-01    5.055612e-03  |           0  |     0.007        2
- -1.640000e+02  | -1.640000e+02 -1.647500e+02  |   7.500000e-01    4.552352e-03  |           0  |     0.010        3
- -1.640000e+02  | -1.640000e+02 -1.640000e+02  |   0.000000e+00    0.000000e+00  |           0  |     0.013        4
+Model 11 of 13. UB: -164.0, LB:-164.83333333333334, Time: 1.828s
+ -1.640000e+02  | -1.640000e+02 -1.648333e+02  |   8.333333e-01    5.055612e-03  |           0  |     0.006        1
+ -1.640000e+02  | -1.640000e+02 -1.648333e+02  |   8.333333e-01    5.055612e-03  |           0  |     0.009        2
+ -1.640000e+02  | -1.640000e+02 -1.648333e+02  |   8.333333e-01    5.055612e-03  |           0  |     0.011        3
+ -1.640000e+02  | -1.640000e+02 -1.647000e+02  |   7.000000e-01    4.250152e-03  |           0  |     0.014        4
+ -1.640000e+02  | -1.640000e+02 -1.647000e+02  |   7.000000e-01    4.250152e-03  |           0  |     0.018        5
+ -1.640000e+02  | -1.640000e+02 -1.645000e+02  |   5.000000e-01    3.039514e-03  |           0  |     0.033        6
+ -1.640000e+02  | -1.640000e+02 -1.640000e+02  |   0.000000e+00    0.000000e+00  |           0  |     0.036        7
 
 Convergence criteria met.
 
 Attempting to branch.
 
-Model 12 of 13. UB: -164.0, LB:-164.5, Time: 1.333s
- -1.635000e+02  | -1.635000e+02 -1.645000e+02  |   1.000000e+00    6.079027e-03  |           0  |     0.005        1
- -1.640000e+02  | -1.640000e+02 -1.640000e+02  |   0.000000e+00    0.000000e+00  |           0  |     0.008        2
+Model 12 of 13. UB: -164.0, LB:-164.5, Time: 1.864s
+ -1.635000e+02  | -1.635000e+02 -1.645000e+02  |   1.000000e+00    6.079027e-03  |           0  |     0.007        1
+ -1.640000e+02  | -1.640000e+02 -1.640000e+02  |   0.000000e+00    0.000000e+00  |           0  |     0.010        2
 
 Convergence criteria met.
 
 Attempting to branch.
 
-Model 13 of 13. UB: -164.0, LB:-164.5, Time: 1.342s
- -1.640000e+02  | -1.640000e+02 -1.645000e+02  |   5.000000e-01    3.039514e-03  |           0  |     0.005        1
- -1.640000e+02  | -1.640000e+02 -1.645000e+02  |   5.000000e-01    3.039514e-03  |           0  |     0.008        2
- -1.640000e+02  | -1.640000e+02 -1.642500e+02  |   2.500000e-01    1.522070e-03  |           0  |     0.011        3
- -1.640000e+02  | -1.640000e+02 -1.640000e+02  |   0.000000e+00    0.000000e+00  |           0  |     0.014        4
+Model 13 of 13. UB: -164.0, LB:-164.5, Time: 1.875s
+ -1.640000e+02  | -1.640000e+02 -1.645000e+02  |   5.000000e-01    3.039514e-03  |           0  |     0.006        1
+ -1.640000e+02  | -1.640000e+02 -1.645000e+02  |   5.000000e-01    3.039514e-03  |           0  |     0.010        2
+ -1.640000e+02  | -1.640000e+02 -1.640000e+02  |   0.000000e+00    0.000000e+00  |           0  |     0.013        3
 
 Convergence criteria met.
 
 Objective value of best integer-feasible solution: -164.0
 Objective value of lower bound: -164.0
-Solve time: 1.362s
+Solve time: 1.895s
 
 JuDGE Expansions
 Node 1: &quot;invest&quot; 9.0
@@ -425,7 +418,7 @@ Model 1 of 1. UB: Inf, LB:-Inf, Time: 0.0s
 
 Objective value of best integer-feasible solution: -160.5
 Objective value of lower bound: -160.5
-Solve time: 0.465s
+Solve time: 0.656s
 Objective: -160.5
 Lower Bound: -160.5</code></pre><h2 id="Tutorial-8:-Shutdown-variables"><a class="docs-heading-anchor" href="#Tutorial-8:-Shutdown-variables">Tutorial 8: Shutdown variables</a><a id="Tutorial-8:-Shutdown-variables-1"></a><a class="docs-heading-anchor-permalink" href="#Tutorial-8:-Shutdown-variables" title="Permalink"></a></h2><p>JuDGE supports shutdown decisions. These are variables that remove capacity when they are activated. The <code>@capitalcosts</code> of these decisions may be negative, reflecting some salvage value; moreover, the <code>@ongoingcosts</code> may also be negative, reflecting avoided maintenance costs. Given that this is a shutdown variable, it is important to remember that the capacity being removed should be accounted for elsewhere within the subproblem.</p><pre><code class="language-julia hljs">function sub_problems_shutdown(node)
    model = Model(JuDGE_SP_Solver)
@@ -452,11 +445,10 @@ JuDGE.print_expansions(judy)</code></pre><pre class="documenter-example-output">
 [ Info: Solving JuDGE model for tree: Subtree rooted at node 1 containing 7 nodes
 
 Relaxed ObjVal  |   Upper Bound   Lower Bound  |  Absolute Diff   Relative Diff  |  Fractional  |      Time     Iter
- -1.500000e+01  | -1.500000e+01          -Inf  |            Inf             NaN  |           0  |     0.126        1
- -1.442500e+02  | -1.442500e+02 -1.622500e+02  |   1.800000e+01    1.109399e-01  |           0  |     0.171        2
- -1.450000e+02  | -1.450000e+02 -1.622500e+02  |   1.725000e+01    1.063174e-01  |           0  |     0.172        3
- -1.450000e+02  | -1.450000e+02 -1.622500e+02  |   1.725000e+01    1.063174e-01  |           0  |     0.173        4
- -1.450000e+02  | -1.450000e+02 -1.450000e+02  |   0.000000e+00    0.000000e+00  |           0  |     0.174        5
+ -1.500000e+01  | -1.500000e+01          -Inf  |            Inf             NaN  |           0  |     0.180        1
+ -1.450000e+02  | -1.450000e+02 -1.560000e+02  |   1.100000e+01    7.051282e-02  |           0  |     0.246        2
+ -1.450000e+02  | -1.450000e+02 -1.560000e+02  |   1.100000e+01    7.051282e-02  |           0  |     0.247        3
+ -1.450000e+02  | -1.450000e+02 -1.450000e+02  |   0.000000e+00    0.000000e+00  |           0  |     0.249        4
 
 Convergence criteria met.
 Objective: -145.0
@@ -471,4 +463,4 @@ Node 121: &quot;bag&quot; 1.0</code></pre><h2 id="Tutorial-9:-Side-constraints">
 end</code></pre><p>We now can define a <code>JuDGEModel</code> with these side-constraints, and solve it using branch and price.</p><pre><code class="language-julia hljs">judy = JuDGEModel(mytree, ConditionallyUniformProbabilities, sub_problems, JuDGE_MP_Solver,
 	sideconstraints=budget)
 judy = JuDGE.branch_and_price(judy, search=:lowestLB, branch_method=JuDGE.constraint_branch)
-JuDGE.print_expansions(judy, format=format_output)</code></pre><h2 id="Tutorial-10:-State-variables"><a class="docs-heading-anchor" href="#Tutorial-10:-State-variables">Tutorial 10: State variables</a><a id="Tutorial-10:-State-variables-1"></a><a class="docs-heading-anchor-permalink" href="#Tutorial-10:-State-variables" title="Permalink"></a></h2><p>JuDGE has experimental support for state variables. These are variables that are part of the master problem, and are either increased or decreased by actions within the subproblems. See the example inventory.jl for details of how these variables can be implemented.</p><h2 id="Tutorial-11:-Set-partitioning-/-packing-models"><a class="docs-heading-anchor" href="#Tutorial-11:-Set-partitioning-/-packing-models">Tutorial 11: Set partitioning / packing models</a><a id="Tutorial-11:-Set-partitioning-/-packing-models-1"></a><a class="docs-heading-anchor-permalink" href="#Tutorial-11:-Set-partitioning-/-packing-models" title="Permalink"></a></h2><p>JuDGE has experimental support for set partitioning / packing models. The documentation for this hasn&#39;t been written yet, but examples of a vehicle routing model (vrp.jl) and a cutting stock model (cutting_stock.jl) are provided in the examples directory.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« JuDGE</a><a class="docs-footer-nextpage" href="../api/">API Reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.7 on <span class="colophon-date" title="Wednesday 29 September 2021 07:52">Wednesday 29 September 2021</span>. Using Julia version 1.0.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+JuDGE.print_expansions(judy, format=format_output)</code></pre><h2 id="Tutorial-10:-State-variables"><a class="docs-heading-anchor" href="#Tutorial-10:-State-variables">Tutorial 10: State variables</a><a id="Tutorial-10:-State-variables-1"></a><a class="docs-heading-anchor-permalink" href="#Tutorial-10:-State-variables" title="Permalink"></a></h2><p>JuDGE has experimental support for state variables. These are variables that are part of the master problem, and are either increased or decreased by actions within the subproblems. See the example inventory.jl for details of how these variables can be implemented.</p><h2 id="Tutorial-11:-Set-partitioning-/-packing-models"><a class="docs-heading-anchor" href="#Tutorial-11:-Set-partitioning-/-packing-models">Tutorial 11: Set partitioning / packing models</a><a id="Tutorial-11:-Set-partitioning-/-packing-models-1"></a><a class="docs-heading-anchor-permalink" href="#Tutorial-11:-Set-partitioning-/-packing-models" title="Permalink"></a></h2><p>JuDGE has experimental support for set partitioning / packing models. The documentation for this hasn&#39;t been written yet, but examples of a vehicle routing model (vrp.jl) and a cutting stock model (cutting_stock.jl) are provided in the examples directory.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« JuDGE</a><a class="docs-footer-nextpage" href="../api/">API Reference »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.8 on <span class="colophon-date" title="Friday 15 October 2021 10:25">Friday 15 October 2021</span>. Using Julia version 1.0.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
