@@ -466,6 +466,7 @@ function solve(
     mp_callback::Union{Nothing,Function} = nothing,
     prune::Float64 = Inf,
     heuristic::Union{Nothing,Function} = nothing,
+    skip_nodes::Int = 0,
     verbose::Int = 2,
 )
     current = InitialConvergenceState()
@@ -486,16 +487,14 @@ function solve(
     obj = Inf
     heuristicobj = Inf
     nodes = collect(judge.tree)
-    objduals = Dict{AbstractTree,Float64}()
-    redcosts = Dict{AbstractTree,Float64}()
-    for node in nodes
-        objduals[node] = -1
-        redcosts[node] = -1
-    end
+    exit_flag = nothing
     no_int_count = 0
     if optimizer_attributes != nothing
         optimizer_attributes(judge, false, true)
     end
+
+    skip_list = []
+    skip_counter = skip_nodes
 
     max_char = length(nodes[end].name) + length(string(length(nodes)))
     function get_whitespace(name::String, number::Int)
@@ -506,11 +505,19 @@ function solve(
         end
         return blank
     end
+
+    function create_column(node::AbstractTree)
+        column =
+            add_column(judge.master_problem, judge.sub_problems[node], node)
+        if warm_starts
+            set_start_value(column.var, 0.0)
+        end
+        return nothing
+    end
+
     if blocks == nothing
         blocks = [nodes]
     end
-
-    block = -1
 
     if judge.master_problem.ext[:mip]
         remove_binary(judge)
@@ -522,19 +529,34 @@ function solve(
 
     optimize!(judge.master_problem)
     status = termination_status(judge.master_problem)
+
+    block = length(blocks) == 1 ? 0 : 1
+
     if status == MOI.NUMERICAL_ERROR
         println("\nMaster problem returned a MOI.NUMERICAL_ERROR")
-        for (sp, con) in b_con
-            delete(sp, con)
-        end
-        return
+        @goto terminate
+    elseif status ∈
+           [MOI.INFEASIBLE_OR_UNBOUNDED, MOI.INFEASIBLE, MOI.DUAL_INFEASIBLE]
+        block = 0
     end
 
     while true
         if block <= 0
-            nodes2 = nodes
+            nodes2 = copy(nodes)
         else
-            nodes2 = blocks[block]
+            nodes2 = copy(blocks[block])
+        end
+        if skip_counter == 0 || length(skip_list) == length(nodes)
+            empty!(skip_list)
+            skip_counter = skip_nodes
+        else
+            skip_counter -= 1
+            for n in skip_list
+                index = findfirst(x -> x == n, nodes2)
+                if index != nothing
+                    deleteat!(nodes2, index)
+                end
+            end
         end
         # perform the main iterations
         for i in 1:length(nodes2)
@@ -554,9 +576,8 @@ function solve(
 
             optimize!(sp)
 
-            if termination_status(sp) != MOI.OPTIMAL &&
-               termination_status(sp) != MOI.INTERRUPTED &&
-               termination_status(sp) != MOI.TIME_LIMIT
+            if termination_status(sp) ∉
+               [MOI.OPTIMAL, MOI.INTERRUPTED, MOI.TIME_LIMIT]
                 if verbose == 2
                     println("")
                 end
@@ -566,10 +587,8 @@ function solve(
                     " exited with status " *
                     string(termination_status(sp))
                 )
-                for (sp2, con) in b_con
-                    delete(sp2, con)
-                end
-                return :sp_infeasible
+                exit_flag = :sp_infeasible
+                @goto terminate
             end
             if warm_starts
                 vars = all_variables(sp)
@@ -579,49 +598,42 @@ function solve(
         if verbose == 2
             overprint("")
         end
+
         frac = 0
-        if status != MOI.INFEASIBLE_OR_UNBOUNDED &&
-           status != MOI.INFEASIBLE &&
-           status != MOI.DUAL_INFEASIBLE
-            for node in nodes2
-                objduals[node] = objective_bound(judge.sub_problems[node])
-                redcosts[node] = objective_value(judge.sub_problems[node])
-            end
+
+        if status ∉
+           [MOI.INFEASIBLE_OR_UNBOUNDED, MOI.INFEASIBLE, MOI.DUAL_INFEASIBLE]
             if status != MOI.OPTIMAL
                 @warn(
                     "Master problem did not solve to optimality: " *
                     string(status)
                 )
-            elseif block == 0
-                getlowerbound(judge, objduals)
+            elseif block == 0 && length(skip_list) == 0
+                getlowerbound(judge)
             end
         elseif judge.bounds.LB > -Inf
             println("\nMaster problem is infeasible or unbounded")
-            for (sp, con) in b_con
-                delete(sp, con)
-            end
             judge.bounds.LB = Inf
             judge.bounds.UB = Inf
-            return
+            exit_flag = :master_infeasible
+            break
         end
 
         num_var = num_variables(judge.master_problem)
-        for node in nodes2
-            if redcosts[node] < -10^-10 ||
-               status == MOI.INFEASIBLE_OR_UNBOUNDED ||
-               status == MOI.INFEASIBLE ||
-               status == MOI.DUAL_INFEASIBLE
-                column = add_column(
-                    judge.master_problem,
-                    judge.sub_problems[node],
-                    node,
-                )
-                if warm_starts
-                    set_start_value(column.var, 0.0)
+        if status ∈
+           [MOI.INFEASIBLE_OR_UNBOUNDED, MOI.INFEASIBLE, MOI.DUAL_INFEASIBLE]
+            for node in nodes2
+                create_column(node)
+            end
+        else
+            for node in nodes2
+                if objective_value(judge.sub_problems[node]) < -10^-10
+                    create_column(node)
+                elseif skip_nodes != 0
+                    push!(skip_list, node)
                 end
             end
         end
-
         if verbose == 2
             overprint("Solving master problem")
             optimize!(judge.master_problem)
@@ -632,13 +644,13 @@ function solve(
         status = termination_status(judge.master_problem)
         if status == MOI.NUMERICAL_ERROR
             println("\nMaster problem returned a MOI.NUMERICAL_ERROR")
-            for (sp, con) in b_con
-                delete(sp, con)
-            end
-            return
-        elseif status != MOI.INFEASIBLE_OR_UNBOUNDED &&
-               status != MOI.INFEASIBLE &&
-               status != MOI.DUAL_INFEASIBLE
+            exit_flag = :master_numerical_error
+            break
+        elseif status ∉ [
+            MOI.INFEASIBLE_OR_UNBOUNDED,
+            MOI.INFEASIBLE,
+            MOI.DUAL_INFEASIBLE,
+        ]
             frac = fractionalcount(judge, termination.inttol)
             obj = objective_value(judge.master_problem)
             if frac == 0
@@ -666,6 +678,8 @@ function solve(
             else
                 no_int_count += 1
             end
+        else
+            block = -1
         end
         current = ConvergenceState(
             obj,
@@ -683,10 +697,7 @@ function solve(
             if verbose > 0
                 println("\nDominated by incumbent.")
             end
-            for (sp, con) in b_con
-                delete(sp, con)
-            end
-            return
+            break
         elseif has_converged(termination, current)
             if frac > 0
                 solve_master_binary(
@@ -718,18 +729,12 @@ function solve(
             if verbose > 0
                 println("\nConvergence criteria met.")
             end
-            for (sp, con) in b_con
-                delete(sp, con)
-            end
-            return
+            break
         elseif termination.allow_frac == :first_fractional && frac > 0
             if verbose > 0
                 println("\nFractional solution found.")
             end
-            for (sp, con) in b_con
-                delete(sp, con)
-            end
-            return
+            break
         elseif (
             (
                 max_no_int > 0 &&
@@ -772,10 +777,7 @@ function solve(
                 if verbose > 0
                     println("\nConvergence criteria met.")
                 end
-                for (sp, con) in b_con
-                    delete(sp, con)
-                end
-                return
+                break
             elseif termination.allow_frac == :binary_solve
                 remove_binary(judge)
                 optimize!(judge.master_problem)
@@ -785,34 +787,36 @@ function solve(
 
         if optimizer_attributes == nothing
             if block == 0 && num_var == num_variables(judge.master_problem)
-                solve_master_binary(
-                    judge,
-                    initial_time,
-                    termination,
-                    warm_starts,
-                    nothing,
-                    verbose,
-                )
-                if verbose > 0
-                    println("\nStalled: exiting.")
+                if length(nodes2) == length(nodes)
+                    solve_master_binary(
+                        judge,
+                        initial_time,
+                        termination,
+                        warm_starts,
+                        nothing,
+                        verbose,
+                    )
+                    if verbose > 0
+                        println("\nStalled: exiting.")
+                    end
+                    break
+                else
+                    skip_counter = 0
                 end
-                for (sp, con) in b_con
-                    delete(sp, con)
-                end
-                return
             end
         elseif optimizer_attributes(
             judge,
             num_var == num_variables(judge.master_problem),
             false,
         )
-            if verbose > 0
-                println("\nStalled: exiting.")
+            if length(nodes2) == length(nodes)
+                if verbose > 0
+                    println("\nStalled: exiting.")
+                end
+                break
+            else
+                skip_counter = 0
             end
-            for (sp, con) in b_con
-                delete(sp, con)
-            end
-            return
         end
         if length(blocks) == 1
             block = 0
@@ -820,18 +824,21 @@ function solve(
             block = (block + 1) % (length(blocks) + 1)
         end
     end
+    @label terminate
     for (sp, con) in b_con
         delete(sp, con)
     end
+    return exit_flag
 end
 
-function getlowerbound(judge::JuDGEModel, objduals::Dict{AbstractTree,Float64})
+function getlowerbound(judge::JuDGEModel)
     lb = objective_value(judge.master_problem)
-    for (i, objdual) in objduals
-        if :sum_max in keys(i.ext)
-            lb += objdual * i.ext[:sum_max]
+
+    for (node, sp) in judge.sub_problems
+        if :sum_max in keys(node.ext)
+            lb += objective_bound(sp) * node.ext[:sum_max]
         else
-            lb += objdual
+            lb += objective_bound(sp)
         end
     end
     if lb > judge.bounds.LB
@@ -926,6 +933,10 @@ function updateduals(master, sub_problem, node, status, iter)
                 cc_sum += dual(constr)
             end
         end
+
+        # for col in master.ext[:columns][node]
+        #     cc_sum += dual(LowerBoundRef(col.var))# - dual(UpperBoundRef(col.var))
+        # end
 
         set_objective_function(
             sub_problem,

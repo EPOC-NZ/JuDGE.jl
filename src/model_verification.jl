@@ -91,7 +91,9 @@ function check_sp_costs(model)
         #if typeof(model.ext[:ongoingcosts])!=AffExpr
         #    error("@ongoingcosts must be provided a linear expression (AffExpr)")
         #elseif model.ext[:ongoingcosts].constant!=0
-        error("@ongoingcosts should not contain any constant terms")
+        error(
+            "@ongoingcosts should not contain any constant terms. Add these to the subproblem.",
+        )
         # else
         #     av=all_variables(model)
         #     for v in av

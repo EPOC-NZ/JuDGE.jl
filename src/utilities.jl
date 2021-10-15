@@ -117,18 +117,33 @@ function relaxinteger(x::VariableInfo)
 end
 
 function UnitIntervalInformation(; UB::Float64 = 1.0)
-    return VariableInfo(
-        true,
-        0.0,
-        true,
-        UB,
-        false,
-        NaN,
-        false,
-        NaN,
-        false,
-        false,
-    )
+    if UB == 1.0
+        return VariableInfo(
+            true,
+            0.0,
+            false,
+            NaN,
+            false,
+            NaN,
+            false,
+            NaN,
+            false,
+            false,
+        )
+    else
+        return VariableInfo(
+            true,
+            0.0,
+            true,
+            UB,
+            false,
+            NaN,
+            false,
+            NaN,
+            false,
+            false,
+        )
+    end
 end
 
 function objcoef(x::JuMP.VariableRef)
