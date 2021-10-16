@@ -3,7 +3,7 @@ struct Risk
     α::Float64
     offset::Union{Dict{Leaf,Float64},Nothing}
     bound::Union{Float64,Nothing}
-    penalty::Float64
+    penalty::Union{Float64,Nothing}
 end
 
 """
@@ -20,7 +20,7 @@ end
          α::Float64;
          offset::Union{Dict{Leaf,Float64},Nothing}=nothing,
          bound::Union{Float64,Nothing}=nothing,
-         penalty::Float64=100000.0)
+         penalty::Union{Float64,Nothing} = nothing)
 
 Define the CVaR risk measure to be applied to the accumulated profits at the leaf nodes.
 
@@ -37,14 +37,14 @@ the outcomes prior to applying the risk measure.
 `bound` if used, this will create a constraint on CVaR(α) with this as the upper bound.
 
 `penalty` if a constraint on CVaR is applied, then the marginal cost of violating the
-constraint is `penalty`.
+constraint is `penalty`; if set to `nothing` then no constraint violation is allowed.)
 """
 function Risk(
     λ::Float64,
     α::Float64;
     offset::Union{Dict{Leaf,Float64},Nothing} = nothing,
     bound::Union{Float64,Nothing} = nothing,
-    penalty::Float64 = 100000.0,
+    penalty::Union{Float64,Nothing} = nothing,
 )
     if α <= 0.0 || α > 1.0
         error("α must be >0 and <=1")
@@ -58,11 +58,14 @@ end
 	Risk(α::Float64;
          offset::Union{Dict{Leaf,Float64},Nothing}=nothing,
          bound::Union{Float64,Nothing}=nothing,
-         penalty::Float64=100000.0)
+         penalty::Union{Float64,Nothing} = nothing)
 
 Define the CVaR risk constraint to be applied to the accumulated profits at the leaf nodes.
 
 ### Required Arguments
+`λ` is weighting applied for the risk measure (max sum of weightings should be 1.0),
+if sum of weightings is less than 1.0, expected value will make up the rest.
+
 `α` is the probability in the tail of the distribution
 
 ### Optional Arguments
@@ -72,13 +75,13 @@ the outcomes prior to applying the risk measure.
 `bound` if used, this will create a constraint on CVaR(α) with this as the upper bound.
 
 `penalty` if a constraint on CVaR is applied, then the marginal cost of violating the
-constraint is `penalty`.
+constraint is `penalty`; if set to `nothing` then no constraint violation is allowed.
 """
 function Risk(
     α::Float64;
     offset::Union{Dict{Leaf,Float64},Nothing} = nothing,
     bound::Union{Float64,Nothing} = nothing,
-    penalty::Float64 = 100000.0,
+    penalty::Union{Float64,Nothing} = nothing,
 )
     if α <= 0.0 || α > 1.0
         error("α must be >0 and <=1")

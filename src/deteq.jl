@@ -548,10 +548,17 @@ function build_deteq(
     for i in 1:length(risk_objectives)
         objective_fn += risk_objectives[i] * risk[i].λ
         if risk[i].bound != nothing
-            surplus = @variable(model)
-            set_lower_bound(surplus, 0)
-            @constraint(model, risk_objectives[i] <= risk[i].bound + surplus)
-            objective_fn += risk[i].penalty * surplus
+            if risk[i].penalty != nothing
+                surplus = @variable(model)
+                set_lower_bound(surplus, 0)
+                @constraint(
+                    model,
+                    risk_objectives[i] <= risk[i].bound + surplus
+                )
+                objective_fn += risk[i].penalty * surplus
+            else
+                @constraint(model, risk_objectives[i] <= risk[i].bound)
+            end
         end
     end
 

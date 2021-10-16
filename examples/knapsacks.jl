@@ -409,6 +409,7 @@ function knapsack_risk_averse()
         "Deterministic Equivalent Objective: " *
         string(JuDGE.get_objval(deteq)),
     )
+    JuDGE.print_expansions(deteq, format = format_output)
 
     return objective_value(best.master_problem)
 end
