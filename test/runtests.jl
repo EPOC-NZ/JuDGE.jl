@@ -70,6 +70,22 @@ include(joinpath(_EXAMPLES_DIR, "solvers", "setup_glpk.jl"))
             ],
             risk = Risk(0.1, bound = 1.0),
         ) ≈ -10.467 atol = 1e-3
+
+        @test inventory(
+            depth = 2,
+            degree = 2,
+            price_array = [
+                0.1172393013694979,
+                0.25653400961083994,
+                4.2365322616699785e-6,
+                0.7161790267880648,
+                0.05823720128592225,
+                0.04993686809222453,
+                0.9201443039152302,
+            ],
+            risk = Risk(0.1, bound = 1.0),
+            formulation = :deteq,
+        ) ≈ -10.467 atol = 1e-3
     end
 
     @testset "Stochastic Knapsack" begin

@@ -13,6 +13,7 @@ function inventory(;
     price_array = nothing,
     visualise = false,
     risk = RiskNeutral(),
+    formulation = :decomp,
 )
     mytree = narytree(depth, degree)
 
@@ -48,18 +49,33 @@ function inventory(;
         return sp
     end
 
-    model = JuDGEModel(
-        mytree,
-        ConditionallyUniformProbabilities,
-        sub_problems,
-        JuDGE_MP_Solver,
-        check = true,
-        risk = risk,
-    )
-
-    JuDGE.solve(model, verbose = 1)
+    model = nothing
+    if formulation == :decomp
+        model = JuDGEModel(
+            mytree,
+            ConditionallyUniformProbabilities,
+            sub_problems,
+            JuDGE_MP_Solver,
+            check = true,
+            risk = risk,
+        )
+        JuDGE.solve(model, verbose = 1)
+        println("\nRe-solved Objective: " * string(resolve_subproblems(model)))
+    elseif formulation == :deteq
+        model = DetEqModel(
+            mytree,
+            ConditionallyUniformProbabilities,
+            sub_problems,
+            JuDGE_DE_Solver,
+            check = true,
+            risk = risk,
+        )
+        JuDGE.solve(model)
+        println("\nObjective: " * string(JuDGE.get_objval(model)))
+    else
+        @error("Invalid formulation type")
+    end
     JuDGE.print_expansions(model, onlynonzero = true, inttol = 10^-5)
-    println("\nRe-solved Objective: " * string(resolve_subproblems(model)))
 
     if visualise
         solution = JuDGE.solution_to_dictionary(model)

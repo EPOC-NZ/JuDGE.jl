@@ -18,7 +18,6 @@ end
                discount_factor=1.0,
                risk=RiskNeutral,
                sideconstraints=nothing,
-               parallel=false,
                check=true)
 
 Define a deterministic equivalent model for the stochastic capacity expansion
@@ -43,8 +42,6 @@ in the scenario tree
 `sideconstraints` is a function which specifies side constraints in the master problem, see
 [Tutorial 9: Side-constraints](@ref) for further details.
 
-`parallel` is a boolean, setting whether the sub-problems will be formulated in parallel
-
 `check` is a boolean, which can be set to `false` to disable the validation of the JuDGE model.
 
 ### Examples
@@ -61,7 +58,6 @@ function DetEqModel(
     discount_factor = 1.0,
     risk::Union{Risk,Vector{Risk}} = RiskNeutral(),
     sideconstraints = nothing,
-    parallel = false,
     check = true,
 )
     println("")
@@ -79,17 +75,7 @@ function DetEqModel(
 
     nodes = collect(tree)
 
-    if parallel
-        sps = pmap(sub_problem_builder, nodes)
-        i = 1
-        sub_problems = Dict()
-        for n in nodes
-            sub_problems[n] = sps[i]
-            i += 1
-        end
-    else
-        sub_problems = Dict(i => sub_problem_builder(i) for i in nodes)
-    end
+    sub_problems = Dict(i => sub_problem_builder(i) for i in nodes)
 
     if check
         print("Checking sub-problem format...")
