@@ -146,15 +146,6 @@ function UnitIntervalInformation(; UB::Float64 = 1.0)
     end
 end
 
-function objcoef(x::JuMP.VariableRef)
-    affine_expression = objective_function(owner_model(x))
-    if x in keys(affine_expression.terms)
-        affine_expression.terms[x]
-    else
-        0.0
-    end
-end
-
 function coef(aff, x::JuMP.VariableRef)
     if x in keys(aff)
         aff[x]

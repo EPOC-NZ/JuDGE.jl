@@ -53,7 +53,7 @@ function inventory(;
     if formulation == :decomp
         model = JuDGEModel(
             mytree,
-            ConditionallyUniformProbabilities,
+            UniformLeafProbabilities,
             sub_problems,
             JuDGE_MP_Solver,
             check = true,
@@ -64,7 +64,7 @@ function inventory(;
     elseif formulation == :deteq
         model = DetEqModel(
             mytree,
-            ConditionallyUniformProbabilities,
+            UniformLeafProbabilities,
             sub_problems,
             JuDGE_DE_Solver,
             check = true,

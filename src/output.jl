@@ -1,23 +1,3 @@
-function value(jmodel::JuDGEModel, node::AbstractTree, var::Symbol, index::Int)
-    if termination_status(jmodel.master_problem) != MOI.OPTIMAL
-        error("JuDGE model not solved")
-    end
-    return JuMP.value(jmodel.sub_problems[node][var][index])
-end
-
-function value(jmodel::JuDGEModel, node::AbstractTree, var::Symbol)
-    if termination_status(jmodel.master_problem) != MOI.OPTIMAL
-        error("JuDGE model not solved")
-    end
-
-    if isa(jmodel.sub_problems[node][var], JuMP.Containers.DenseAxisArray) ||
-       isa(jmodel.sub_problems[node][var], JuMP.Containers.SparseAxisArray)
-        return JuMP.value.(jmodel.sub_problems[node][var])
-    else
-        return JuMP.value(jmodel.sub_problems[node][var])
-    end
-end
-
 """
 	print_expansions(jmodel::JuDGEModel;
                      onlynonzero::Bool=true,
