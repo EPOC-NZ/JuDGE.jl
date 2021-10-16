@@ -8,13 +8,23 @@ if !isdefined(@__MODULE__, :JuDGE_MP_Solver)
     include("solvers/setup_gurobi.jl")
 end
 
-function cutting_stock(; seed::Int = 200, L = 10, sizes = [2, 3, 5])
+function cutting_stock(;
+    seed::Int = 200,
+    L = 10,
+    sizes = [2, 3, 5],
+    test = false,
+)
     mytree = narytree(0, 0)
 
-    Random.seed!(seed)
-
     n = length(sizes)
-    demand = rand(10:200, n)
+
+    if test
+        demand = [26, 31, 109]
+    else
+        Random.seed!(seed)
+        demand = rand(10:200, n)
+    end
+
     num_sizes = length(sizes)
     max_repeat = L ÷ minimum(sizes)
     max_patterns = 2
@@ -236,9 +246,11 @@ function cutting_stock(; seed::Int = 200, L = 10, sizes = [2, 3, 5])
     return JuDGE.get_objval(judy)
 end
 
-@test cutting_stock() == 70.0
-@test cutting_stock(
-    seed = 12,
-    L = 100,
-    sizes = [2, 3, 5, 7, 11, 13, 17, 19, 24, 37, 47, 62],
-) == 238.0
+if !isdefined(@__MODULE__, :running_tests) || !running_tests
+    cutting_stock() # 70
+    cutting_stock(
+        seed = 12,
+        L = 100,
+        sizes = [2, 3, 5, 7, 11, 13, 17, 19, 24, 37, 47, 62],
+    ) # 238
+end

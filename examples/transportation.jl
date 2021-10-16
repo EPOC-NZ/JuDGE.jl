@@ -172,7 +172,7 @@ function transportation(; view_file = false)
         JuDGE_MP_Solver,
         discount_factor = 0.9,
     )
-    JuDGE.solve(judy, termination = Termination(inttol = 10^-7))
+    JuDGE.solve(judy, termination = Termination(inttol = 10^-7), skip_nodes = 2)
 
     println(
         "\nObjective: " * string(objective_value(judy.master_problem)) * "\n",

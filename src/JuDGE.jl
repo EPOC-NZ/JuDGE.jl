@@ -260,6 +260,7 @@ function scale_objectives(
             1.0 / (discount_factor^depth(node)),
         )
     end
+    return nothing
 end
 
 function Base.map(f, hello::JuMP.Containers.DenseAxisArray)
@@ -308,6 +309,7 @@ function add_variable_as_column(master, column)
             )
         end
     end
+    return nothing
 end
 
 # constraint that's used to recreate a discrete subproblem variable in the master problem
@@ -331,6 +333,7 @@ function add_mixed_cover(master, sp, column)
             column.solution[i],
         )
     end
+    return nothing
 end
 
 function add_column(
@@ -1084,6 +1087,7 @@ function fix_expansions(jmodel::JuDGEModel)
             end
         end
     end
+    return nothing
 end
 
 """
@@ -1372,5 +1376,4 @@ export @expansion,
     DetEqModel,
     resolve_subproblems,
     Termination
-
 end

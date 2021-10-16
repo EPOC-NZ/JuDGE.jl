@@ -84,6 +84,11 @@ include(joinpath(_EXAMPLES_DIR, "solvers", "setup_glpk.jl"))
         @test transportation(view_file = false) ≈ 1924.35 atol = 1e-2
     end
 
+    @testset "Cutting stock" begin
+        include(joinpath(_EXAMPLES_DIR, "cutting_stock.jl"))
+        @test cutting_stock(test = true) == 70.0
+    end
+
     @testset "EVPI / VSS" begin
         include(joinpath(_EXAMPLES_DIR, "EVPI_and_VSS.jl"))
         rand_array = [
