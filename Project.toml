@@ -12,11 +12,6 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
 
-[compat]
-DataStructures = "≥ 0.18"
-JuMP = "0.21, 0.22"
-MathOptInterface = "0.10"
-
 [extras]
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 GLPK = "60bf3e95-4087-53dc-ae20-288a0d20c6a6"
