@@ -1,4 +1,4 @@
-name = "JuDGE"
+﻿name = "JuDGE"
 uuid = "7600667b-db04-5866-8f94-e5ff75fe7256"
 authors = ["Regan Baucke, Anthony Downward"]
 version = "0.1.6"
@@ -10,10 +10,12 @@ JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+MathOptInterface = "b8f27783-ece8-5eb3-8dc8-9495eed66fee"
 
 [compat]
 DataStructures = "≥ 0.18"
-JuMP = "≥ 0.21"
+JuMP = "0.21, 0.22"
+MathOptInterface = "0.10"
 
 [extras]
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"

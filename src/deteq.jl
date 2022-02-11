@@ -259,7 +259,7 @@ function build_deteq(
                     @constraint(model, LHS == set.value)
                 elseif typeof(set) == MOI.SecondOrderCone
                     @constraint(model, group in SecondOrderCone())
-                elseif typeof(set) == MOI.IndicatorSet{
+                elseif typeof(set) == MOI.Indicator{
                     MOI.ACTIVATE_ON_ZERO,
                     MOI.EqualTo{Float64},
                 }
@@ -268,7 +268,7 @@ function build_deteq(
                         !collect(keys(group[1].terms))[1] =>
                             {group[2] == set.set.value}
                     )
-                elseif typeof(set) == MOI.IndicatorSet{
+                elseif typeof(set) == MOI.Indicator{
                     MOI.ACTIVATE_ON_ZERO,
                     MOI.LessThan{Float64},
                 }
@@ -277,7 +277,7 @@ function build_deteq(
                         !collect(keys(group[1].terms))[1] =>
                             {group[2] <= set.set.value}
                     )
-                elseif typeof(set) == MOI.IndicatorSet{
+                elseif typeof(set) == MOI.Indicator{
                     MOI.ACTIVATE_ON_ZERO,
                     MOI.GreaterThan{Float64},
                 }
@@ -286,7 +286,7 @@ function build_deteq(
                         !collect(keys(group[1].terms))[1] =>
                             {group[2] >= set.set.value}
                     )
-                elseif typeof(set) == MOI.IndicatorSet{
+                elseif typeof(set) == MOI.Indicator{
                     MOI.ACTIVATE_ON_ONE,
                     MOI.EqualTo{Float64},
                 }
@@ -295,7 +295,7 @@ function build_deteq(
                         collect(keys(group[1].terms))[1] =>
                             {group[2] == set.set.value}
                     )
-                elseif typeof(set) == MOI.IndicatorSet{
+                elseif typeof(set) == MOI.Indicator{
                     MOI.ACTIVATE_ON_ONE,
                     MOI.LessThan{Float64},
                 }
@@ -304,7 +304,7 @@ function build_deteq(
                         collect(keys(group[1].terms))[1] =>
                             {group[2] <= set.set.value}
                     )
-                elseif typeof(set) == MOI.IndicatorSet{
+                elseif typeof(set) == MOI.Indicator{
                     MOI.ACTIVATE_ON_ONE,
                     MOI.GreaterThan{Float64},
                 }
