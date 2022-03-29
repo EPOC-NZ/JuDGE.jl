@@ -989,7 +989,7 @@ Once a JuDGE model has converged, it is necessary to re-solve the subproblems to
 ### Examples
     resolve_subproblems(judge)
 """
-function resolve_subproblems(jmodel::JuDGEModel; force_match::Bool=false)
+function resolve_subproblems(jmodel::JuDGEModel; force_match::Bool = false)
     fix_expansions(jmodel, force_match)
     return resolve_fixed(jmodel)
 end
