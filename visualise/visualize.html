@@ -212,6 +212,10 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 	 var textName=true;
 
 	 function downloadSVG() {
+		document.getElementById("col1").children[0].appendChild(document.getElementById("grad0").children[0]);
+		document.getElementById("col1").children[0].style.border='';
+		document.getElementById("col1").children[0].children[1].setAttribute("x",30);
+		document.getElementById("col1").children[0].children[1].setAttribute("y",50);
  		var svg = container.cloneNode(true);
  		svg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
  		svg.setAttribute('onclick','');
@@ -222,6 +226,8 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
  		element.href = window.URL.createObjectURL(blob);
  		element.click();
  		element.remove();
+		document.getElementById("grad0").appendChild(document.getElementById("col1").children[0].children[1]);
+		document.getElementById("col1").children[0].style.border='2px solid black';
  	}
 
  		function rgb2hsl(r,g,b) {
@@ -502,7 +508,7 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
  	}
 
 	function gradscale(id,ct,_min,_max) {
-		var svg2 = '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="25"><style> .small { font: 9px sans-serif; }</style>content</svg>';
+		var svg2 = '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="30"><style> .small { font: 12px sans-serif; }</style>content</svg>';
 		var stop='<stop offset="W%" style="stop-color:rgb(R%,G%,B%)"/>';
 		var text='<text x="X" y="Y" class="small" text-anchor="middle">TEXT</text>'
 		var temp='';
@@ -517,7 +523,7 @@ var JsonView=function(e){"use strict";function n(e){return(n="function"==typeof 
 			}
 		}
 
-		var joined='<defs><linearGradient id="grad-ID" x1="0%" y1="0%" x2="100%" y2="0%">STOPS</linearGradient></defs><rect x="20" y="15" width="260" height="10" fill="url(#grad-ID)"/>'.replace('STOPS',temp).replace('ID',id).replace('ID',id)
+		var joined='<defs><linearGradient id="grad-ID" x1="0%" y1="0%" x2="100%" y2="0%">STOPS</linearGradient></defs><rect x="20" y="15" width="260" height="15" fill="url(#grad-ID)"/>'.replace('STOPS',temp).replace('ID',id).replace('ID',id)
 
 		temp=''
 		num_ticks=5

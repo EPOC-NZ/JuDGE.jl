@@ -252,13 +252,20 @@ function visualize_tree(
     box_size::Int = 800,
     filename::String = string(Int(round((time() * 100) % 100000))),
     view_file::Bool = true,
+    data_from_original::Bool = true,
+    skip_root::Bool = false,
 )
     maxdata = Dict{Symbol,Any}()
     mindata = Dict{Symbol,Any}()
 
     function node_json(node)
         first = true
-        node = getID(node)
+        if data_from_original
+            node = getID(node)
+        end
+        if skip_root && node.parent == nothing
+            return
+        end
         for sym in keys(data[node])
             if sym == :graph_data || sym == :custom_data
                 continue
@@ -425,30 +432,41 @@ function visualize_tree(
     setpositions(some_tree, rel_angle, 700.0, scale_edges, true)
     setpositions2(some_tree, 70.0)
 
+    if skip_root
+        index -= 1
+    end
+
     for node in collect(some_tree, truncate = truncate)
         get_id[node] = index
         node_json(node)
         parent = node.parent
-        if parent != nothing
+        if parent != nothing && (!skip_root || parent.parent != nothing)
             arcs *= arc_json(node, parent)
         end
         index += 1
     end
 
     for node in collect(some_tree, truncate = truncate)
-        temp = Dict{Symbol,Any}()
-        temp[:id] = get_id[node]
-        temp[:label] = node.name
-        temp[:level] = depth(node)
-        temp[:leaf] =
-            typeof(node) == Leaf || (truncate != -1 && depth(node) >= truncate)
-        temp[:posX] = position[node][1]
-        temp[:posY] = position[node][2]
-        temp[:posX2] = position2[node][1]
-        temp[:posY2] = position2[node][2]
-        temp[:data] = data[getID(node)]
-        nodes *= JSON.json(temp)
-        nodes *= ","
+        if !skip_root || node != some_tree
+            temp = Dict{Symbol,Any}()
+            temp[:id] = get_id[node]
+            temp[:label] = node.name
+            temp[:level] = depth(node)
+            temp[:leaf] =
+                typeof(node) == Leaf ||
+                (truncate != -1 && depth(node) >= truncate)
+            temp[:posX] = position[node][1]
+            temp[:posY] = position[node][2]
+            temp[:posX2] = position2[node][1]
+            temp[:posY2] = position2[node][2]
+            if data_from_original
+                temp[:data] = data[getID(node)]
+            else
+                temp[:data] = data[node]
+            end
+            nodes *= JSON.json(temp)
+            nodes *= ","
+        end
     end
 
     nodes *= "];"
@@ -555,7 +573,7 @@ function visualize_tree(
         s = replace(s, "#FUNCTIONS#" => "")
         s = replace(s, "#FUNCTION_CALLS#" => "")
         s = replace(s, "#DIVS#" => "")
-        s = replace(s, "#DIV_LIST#" => "")
+        s = replace(s, "#DIV_LIST#" => "\"properties\"")
     end
     if style == :standard
         s = replace(s, "#TREE_STYLE#" => "true")
@@ -630,7 +648,7 @@ function Base.collect(tree::Tree; order::Symbol = :depth, truncate::Int = -1)
     return collection
 end
 
-function Base.collect(leaf::Leaf; order = :depth)
+function Base.collect(leaf::Leaf; order = :depth, truncate::Int = -1)
     return [leaf]
 end
 
@@ -841,6 +859,8 @@ Given the `depth` and `degree`, this function returns an N-ary tree. Note that a
 function narytree(depth::Int, degree::Int, prefix::String = "1")
     if depth == 0
         return Leaf(prefix)
+    elseif degree == 0
+        error("Tree cannot have a positive depth with degree 0")
     end
 
     tree = Tree(prefix)

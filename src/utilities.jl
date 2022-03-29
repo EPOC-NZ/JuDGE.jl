@@ -470,6 +470,7 @@ end
 """
     add_to_dictionary!(
         original::Dict{AbstractTree,Dict{Symbol,Any}},
+        add::T where {T<:Dict},
         sym::Union{Symbol,Vector{Symbol}})
 
 Given a dictionary produced by the `solution_to_dictionary()` function, and a Symbol or Symbol[],
@@ -477,6 +478,8 @@ this function adds that/those Symbol(s) to the dictionary.
 
 ### Required Arguments
 `original` is a dictionary produced by `solution_to_dictionary()`
+`add` is the dictionary (with the keys being `AbstractTree` objects) that you wish to add to
+the `original` dictionary
 `sym` is a Symbol or Symbol vector of keys to add to each node within the dictionary
 """
 function add_to_dictionary!(
@@ -529,6 +532,45 @@ function remove_from_dictionary!(
             end
         end
     end
+end
+
+function combine_dictionaries(
+    dict1::Dict{AbstractTree,Dict{Symbol,Any}},
+    dict2::Dict{AbstractTree,Dict{Symbol,Any}},
+)
+    temp = Dict{AbstractTree,Dict{Symbol,Any}}()
+
+    for node in keys(dict1)
+        if !haskey(temp, node)
+            temp[node] = Dict{Symbol,Any}()
+        end
+        for sym in keys(dict1[node])
+            if haskey(temp[node], sym)
+                error(
+                    "Key " *
+                    string(sym) *
+                    " exists in both dictionaries for the same nodes.",
+                )
+            end
+            temp[node][sym] = copy(dict1[node][sym])
+        end
+    end
+    for node in keys(dict2)
+        if !haskey(temp, node)
+            temp[node] = Dict{Symbol,Any}()
+        end
+        for sym in keys(dict2[node])
+            if haskey(temp[node], sym)
+                error(
+                    "Key " *
+                    string(sym) *
+                    " exists in both dictionaries for the same nodes.",
+                )
+            end
+            temp[node][sym] = copy(dict2[node][sym])
+        end
+    end
+    return temp
 end
 
 """

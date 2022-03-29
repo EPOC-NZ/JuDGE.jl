@@ -983,15 +983,18 @@ Once a JuDGE model has converged, it is necessary to re-solve the subproblems to
 ### Required Arguments
 `jmodel` is the JuDGE model that we wish to solve.
 
+### Optional Arguments
+`force_match` if true will force all expansion and shutdown variables in the subproblem to exactly match the master problem.
+
 ### Examples
     resolve_subproblems(judge)
 """
-function resolve_subproblems(jmodel::JuDGEModel)
-    fix_expansions(jmodel)
+function resolve_subproblems(jmodel::JuDGEModel; force_match::Bool=false)
+    fix_expansions(jmodel, force_match)
     return resolve_fixed(jmodel)
 end
 
-function fix_expansions(jmodel::JuDGEModel)
+function fix_expansions(jmodel::JuDGEModel, force_match::Bool)
     if termination_status(jmodel.master_problem) != MOI.OPTIMAL &&
        termination_status(jmodel.master_problem) != MOI.INTERRUPTED &&
        termination_status(jmodel.master_problem) != MOI.LOCALLY_SOLVED &&
@@ -1038,9 +1041,17 @@ function fix_expansions(jmodel::JuDGEModel)
                         end
                     end
                     if sp.ext[:options][name][1] == :shutdown
-                        JuMP.set_lower_bound(var2[i], value)
+                        if force_match
+                            JuMP.fix(var2[i], value, force = true)
+                        else
+                            JuMP.set_lower_bound(var2[i], value)
+                        end
                     elseif sp.ext[:options][name][1] == :expansion
-                        JuMP.set_upper_bound(var2[i], value)
+                        if force_match
+                            JuMP.fix(var2[i], value, force = true)
+                        else
+                            JuMP.set_upper_bound(var2[i], value)
+                        end
                     elseif sp.ext[:options][name][1] == :enforced ||
                            sp.ext[:options][name][1] == :state
                         JuMP.fix(var2[i], value, force = true)
@@ -1076,9 +1087,17 @@ function fix_expansions(jmodel::JuDGEModel)
                     end
                 end
                 if sp.ext[:options][name][1] == :shutdown
-                    JuMP.set_lower_bound(var2, value)
+                    if force_match
+                        JuMP.fix(var2, value, force = true)
+                    else
+                        JuMP.set_lower_bound(var2, value)
+                    end
                 elseif sp.ext[:options][name][1] == :expansion
-                    JuMP.set_upper_bound(var2, value)
+                    if force_match
+                        JuMP.fix(var2, value, force = true)
+                    else
+                        JuMP.set_upper_bound(var2, value)
+                    end
                 elseif sp.ext[:options][name][1] == :enforced ||
                        sp.ext[:options][name][1] == :state
                     JuMP.fix(var2, value, force = true)
