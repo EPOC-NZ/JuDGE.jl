@@ -431,6 +431,9 @@ function build_master(
                 )
                 objective_fn += risk[i].penalty * surplus
             else
+                @warn(
+                    "No penalty set for risk constraint violation.\nThis may lead to an infeasible initial solution."
+                )
                 @constraint(model, risk_objectives[i] <= risk[i].bound)
             end
         end

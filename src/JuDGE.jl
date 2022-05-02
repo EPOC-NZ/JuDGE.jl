@@ -620,6 +620,10 @@ function solve(
             judge.bounds.UB = Inf
             exit_flag = :master_infeasible
             break
+        elseif current.iter > 2
+            println("\nMaster problem is infeasible or unbounded")
+            exit_flag = :master_infeasible
+            break
         end
 
         num_var = num_variables(judge.master_problem)

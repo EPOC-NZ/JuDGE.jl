@@ -139,5 +139,8 @@ end
 
 if !isdefined(@__MODULE__, :running_tests) || !running_tests
     inventory(visualise = true, risk = RiskNeutral())
-    inventory(visualise = true, risk = JuDGE.Risk(0.1, bound = 0.0))
+    inventory(
+        visualise = true,
+        risk = JuDGE.Risk(0.1, bound = 0, penalty = 1000),
+    )
 end

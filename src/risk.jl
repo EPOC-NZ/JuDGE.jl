@@ -1,9 +1,9 @@
 struct Risk
-    λ::Float64
-    α::Float64
+    λ::Real
+    α::Real
     offset::Union{Dict{Leaf,Float64},Nothing}
-    bound::Union{Float64,Nothing}
-    penalty::Union{Float64,Nothing}
+    bound::Union{Real,Nothing}
+    penalty::Union{Real,Nothing}
 end
 
 """
@@ -16,11 +16,11 @@ function RiskNeutral()
 end
 
 """
-	Risk(λ::Float64,
-         α::Float64;
+	Risk(λ::Real,
+         α::Real;
          offset::Union{Dict{Leaf,Float64},Nothing}=nothing,
-         bound::Union{Float64,Nothing}=nothing,
-         penalty::Union{Float64,Nothing} = nothing)
+         bound::Union{Real,Nothing}=nothing,
+         penalty::Union{Real,Nothing} = nothing)
 
 Define the CVaR risk measure to be applied to the accumulated profits at the leaf nodes.
 
@@ -40,11 +40,11 @@ the outcomes prior to applying the risk measure.
 constraint is `penalty`; if set to `nothing` then no constraint violation is allowed.)
 """
 function Risk(
-    λ::Float64,
-    α::Float64;
+    λ::Real,
+    α::Real;
     offset::Union{Dict{Leaf,Float64},Nothing} = nothing,
-    bound::Union{Float64,Nothing} = nothing,
-    penalty::Union{Float64,Nothing} = nothing,
+    bound::Union{Real,Nothing} = nothing,
+    penalty::Union{Real,Nothing} = nothing,
 )
     if α <= 0.0 || α > 1.0
         error("α must be >0 and <=1")
@@ -55,10 +55,10 @@ function Risk(
 end
 
 """
-	Risk(α::Float64;
+	Risk(α::Real;
          offset::Union{Dict{Leaf,Float64},Nothing}=nothing,
-         bound::Union{Float64,Nothing}=nothing,
-         penalty::Union{Float64,Nothing} = nothing)
+         bound::Union{Real,Nothing}=nothing,
+         penalty::Union{Real,Nothing} = nothing)
 
 Define the CVaR risk constraint to be applied to the accumulated profits at the leaf nodes.
 
@@ -78,10 +78,10 @@ the outcomes prior to applying the risk measure.
 constraint is `penalty`; if set to `nothing` then no constraint violation is allowed.
 """
 function Risk(
-    α::Float64;
+    α::Real;
     offset::Union{Dict{Leaf,Float64},Nothing} = nothing,
-    bound::Union{Float64,Nothing} = nothing,
-    penalty::Union{Float64,Nothing} = nothing,
+    bound::Union{Real,Nothing} = nothing,
+    penalty::Union{Real,Nothing} = nothing,
 )
     if α <= 0.0 || α > 1.0
         error("α must be >0 and <=1")
