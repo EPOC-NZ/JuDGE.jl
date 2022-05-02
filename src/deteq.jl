@@ -259,19 +259,15 @@ function build_deteq(
                     @constraint(model, LHS == set.value)
                 elseif typeof(set) == MOI.SecondOrderCone
                     @constraint(model, group in SecondOrderCone())
-                elseif typeof(set) == MOI.Indicator{
-                    MOI.ACTIVATE_ON_ZERO,
-                    MOI.EqualTo{Float64},
-                }
+                elseif typeof(set) ==
+                       MOI.Indicator{MOI.ACTIVATE_ON_ZERO,MOI.EqualTo{Float64}}
                     @constraint(
                         model,
                         !collect(keys(group[1].terms))[1] =>
                             {group[2] == set.set.value}
                     )
-                elseif typeof(set) == MOI.Indicator{
-                    MOI.ACTIVATE_ON_ZERO,
-                    MOI.LessThan{Float64},
-                }
+                elseif typeof(set) ==
+                       MOI.Indicator{MOI.ACTIVATE_ON_ZERO,MOI.LessThan{Float64}}
                     @constraint(
                         model,
                         !collect(keys(group[1].terms))[1] =>
@@ -286,19 +282,15 @@ function build_deteq(
                         !collect(keys(group[1].terms))[1] =>
                             {group[2] >= set.set.value}
                     )
-                elseif typeof(set) == MOI.Indicator{
-                    MOI.ACTIVATE_ON_ONE,
-                    MOI.EqualTo{Float64},
-                }
+                elseif typeof(set) ==
+                       MOI.Indicator{MOI.ACTIVATE_ON_ONE,MOI.EqualTo{Float64}}
                     @constraint(
                         model,
                         collect(keys(group[1].terms))[1] =>
                             {group[2] == set.set.value}
                     )
-                elseif typeof(set) == MOI.Indicator{
-                    MOI.ACTIVATE_ON_ONE,
-                    MOI.LessThan{Float64},
-                }
+                elseif typeof(set) ==
+                       MOI.Indicator{MOI.ACTIVATE_ON_ONE,MOI.LessThan{Float64}}
                     @constraint(
                         model,
                         collect(keys(group[1].terms))[1] =>
@@ -363,7 +355,7 @@ function build_deteq(
                 end
             end
             if sp.ext[:options][name][6] != nothing
-                if typeof(variable) <: AbstractArray
+                if typeof(exps) <: AbstractArray
                     for index in keys(exps)
                         key = densekey_to_tuple(index)
                         set_upper_bound(

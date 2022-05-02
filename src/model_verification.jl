@@ -66,6 +66,7 @@ end
 
 function check_sp_costs(model)
     if haskey(model.ext, :capitalcosts) &&
+       length(model.ext[:capitalcosts]) != 0 &&
        model.ext[:capitalcosts][:constant] != 0
         #if typeof(model.ext[:capitalcosts])!=AffExpr
         #    error("@capitalcosts must be provided a linear expression (AffExpr)")
@@ -87,6 +88,7 @@ function check_sp_costs(model)
         #     end
         # end
     elseif haskey(model.ext, :ongoingcosts) &&
+           length(model.ext[:ongoingcosts]) != 0 &&
            model.ext[:ongoingcosts][:constant] != 0
         #if typeof(model.ext[:ongoingcosts])!=AffExpr
         #    error("@ongoingcosts must be provided a linear expression (AffExpr)")

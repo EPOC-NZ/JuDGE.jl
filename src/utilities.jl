@@ -27,7 +27,7 @@ function copy_variable!(toModel, variable::JuMP.VariableRef, f)
     return JuMP.add_variable(
         toModel,
         JuMP.build_variable(error, f(get_info(variable))),
-        "exp",
+        #        "exp",
     )
 end
 
@@ -262,28 +262,62 @@ a standardised structure.
 function solution_to_dictionary(jmodel::JuDGEModel; prefix::String = "")
     function helper(node::AbstractTree, solution::T where {T<:Dict})
         solution[node] = Dict{Symbol,Any}()
-        vars = all_variables(jmodel.sub_problems[node])
-        for v in vars
-            temp = string(v)
-            i = findfirst('[', temp)
-            if i == nothing
-                solution[node][Symbol(prefix * temp)] = JuMP.value(v)
-            else
-                if Symbol(prefix * temp[1:i-1]) ∉ keys(solution[node])
-                    solution[node][Symbol(prefix * temp[1:i-1])] =
-                        Dict{String,Float64}()
+        var_groups = JuMP.object_dictionary(jmodel.sub_problems[node])
+        for (var_group, vars) in var_groups
+            sym = Symbol(prefix * string(var_group))
+            if typeof(vars) == VariableRef
+                solution[node][sym] = JuMP.value(vars)
+            elseif typeof(vars) <: AbstractArray
+                skip = false
+                for v in vars
+                    if typeof(v) != VariableRef
+                        skip = true
+                    end
+                    break
                 end
-                solution[node][Symbol(prefix * temp[1:i-1])][temp[i+1:length(
-                    temp,
-                )-1]] = JuMP.value(v)
+                if skip
+                    continue
+                end
+                if sym ∉ keys(solution[node])
+                    solution[node][sym] = Dict{String,Float64}()
+                end
+                vals = JuMP.value.(vars)
+                if typeof(vars) <: JuMP.Containers.SparseAxisArray
+                    vals = vals.data
+                end
+
+                for key in keys(vals)
+                    temp = ""
+                    if typeof(vals) <: Array
+                        strkey = string(key)
+                        strkey = replace(strkey, "CartesianIndex(" => "")
+                        strkey = replace(strkey, ")" => "")
+                        strkey = replace(strkey, ", " => ",")
+                        temp = strkey
+                    elseif typeof(vals) <: Dict
+                        strkey = string(key)
+                        strkey = replace(strkey, ")" => "")
+                        strkey = replace(strkey, "(" => "")
+                        strkey = replace(strkey, ", " => ",")
+                        temp = strkey
+                    else
+                        strkey = string(key.I)
+                        strkey = replace(strkey, ")" => "")
+                        strkey = replace(strkey, "(" => "")
+                        strkey = replace(strkey, "\"" => "")
+                        strkey = replace(strkey, ", " => ",")
+                        temp = strkey
+                    end
+                    solution[node][sym][temp] = vals[key]
+                end
             end
         end
 
         for (x, var) in jmodel.master_problem.ext[:expansions][node]
+            sym = Symbol(prefix * string(x) * "_master")
             if typeof(var) <: AbstractArray
-                if Symbol(prefix * string(x) * "_master") ∉ keys(solution[node])
-                    solution[node][Symbol(prefix * string(x) * "_master")] =
-                        Dict{String,Float64}()
+                if sym ∉ keys(solution[node])
+                    solution[node][sym] = Dict{String,Float64}()
                 end
                 val = JuMP.value.(var)
                 if typeof(var) <: JuMP.Containers.SparseAxisArray
@@ -310,12 +344,10 @@ function solution_to_dictionary(jmodel::JuDGEModel; prefix::String = "")
                         temp *= string(key[length(val.axes)])
                     end
 
-                    solution[node][Symbol(prefix * string(x) * "_master")][temp] =
-                        val[key]
+                    solution[node][sym][temp] = val[key]
                 end
             else
-                solution[node][Symbol(prefix * string(x) * "_master")] =
-                    JuMP.value(var)
+                solution[node][sym] = JuMP.value(var)
             end
         end
 
