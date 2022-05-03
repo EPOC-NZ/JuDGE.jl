@@ -1044,20 +1044,19 @@ function fix_expansions(jmodel::JuDGEModel, force_match::Bool)
                             end
                         end
                     end
-                    if sp.ext[:options][name][1] == :shutdown
+                    if sp.ext[:options][name][8] == :ge
                         if force_match
                             JuMP.fix(var2[i], value, force = true)
                         else
                             JuMP.set_lower_bound(var2[i], value)
                         end
-                    elseif sp.ext[:options][name][1] == :expansion
+                    elseif sp.ext[:options][name][8] == :le
                         if force_match
                             JuMP.fix(var2[i], value, force = true)
                         else
                             JuMP.set_upper_bound(var2[i], value)
                         end
-                    elseif sp.ext[:options][name][1] == :enforced ||
-                           sp.ext[:options][name][1] == :state
+                    elseif sp.ext[:options][name][8] == :eq
                         JuMP.fix(var2[i], value, force = true)
                     end
                     set_objective_coefficient(sp, var2[i], 0.0)
@@ -1090,20 +1089,19 @@ function fix_expansions(jmodel::JuDGEModel, force_match::Bool)
                         end
                     end
                 end
-                if sp.ext[:options][name][1] == :shutdown
+                if sp.ext[:options][name][8] == :ge
                     if force_match
                         JuMP.fix(var2, value, force = true)
                     else
                         JuMP.set_lower_bound(var2, value)
                     end
-                elseif sp.ext[:options][name][1] == :expansion
+                elseif sp.ext[:options][name][8] == :le
                     if force_match
                         JuMP.fix(var2, value, force = true)
                     else
                         JuMP.set_upper_bound(var2, value)
                     end
-                elseif sp.ext[:options][name][1] == :enforced ||
-                       sp.ext[:options][name][1] == :state
+                elseif sp.ext[:options][name][8] == :eq
                     JuMP.fix(var2, value, force = true)
                 end
                 set_objective_coefficient(sp, var2, 0.0)
@@ -1159,7 +1157,7 @@ function set_policy!(
         end
         JuMP.fix(var[i], val2, force = true)
         val = 0.0
-        if options[1] in [:expansion, :shutdown, :enforced]
+        if options[1] == :cumulative
             for n in hist
                 if haskey(mapping, n)
                     v =
@@ -1228,16 +1226,8 @@ function set_policy!(
             i == 0 ? jmodel.sub_problems[node][name] :
             jmodel.sub_problems[node][name][i]
 
-        jmodel.sub_problems[node][name][i],
-        if options[1] == :expansion
-            bc = BranchConstraint(sp_var, :le, val, node)
-        elseif options[1] == :shutdown
-            bc = BranchConstraint(sp_var, :ge, val, node)
-        elseif options[1] == :enforced
-            bc = BranchConstraint(sp_var, :eq, val, node)
-        elseif options[1] == :state
-            bc = BranchConstraint(sp_var, :eq, val, node)
-        end
+        bc = BranchConstraint(sp_var, options[8], val, node)
+
         return bc
     end
 

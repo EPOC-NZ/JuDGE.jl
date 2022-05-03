@@ -275,51 +275,35 @@ function build_master(
             if typeof(variable) <: AbstractArray
                 model.ext[:coverconstraint][node][name] = Dict()
                 for i in eachindex(variable)
-                    if sp.ext[:options][name][1] == :shutdown
-                        model.ext[:coverconstraint][node][name][i] =
-                            @constraint(
-                                model,
-                                0 >= sum(
-                                    model.ext[:expansions][past[index]][name][i]
-                                    for index in interval
-                                )
+                    if sp.ext[:options][name][1] == :cumulative
+                        if length(interval) != 0
+                            expr = sum(
+                                model.ext[:expansions][past[index]][name][i]
+                                for index in interval
                             )
-                    elseif sp.ext[:options][name][1] == :expansion
-                        model.ext[:coverconstraint][node][name][i] =
-                            @constraint(
-                                model,
-                                0 <= sum(
-                                    model.ext[:expansions][past[index]][name][i]
-                                    for index in interval
-                                )
-                            )
-                    elseif sp.ext[:options][name][1] == :enforced
-                        model.ext[:coverconstraint][node][name][i] =
-                            @constraint(
-                                model,
-                                0 == sum(
-                                    model.ext[:expansions][past[index]][name][i]
-                                    for index in interval
-                                )
-                            )
+                        else
+                            expr = 0
+                        end
                     elseif sp.ext[:options][name][1] == :state
                         if node.parent == nothing
-                            model.ext[:coverconstraint][node][name][i] =
-                                @constraint(
-                                    model,
-                                    0 ==
-                                    -sp.ext[:options][name][7] +
-                                    model.ext[:expansions][node][name][i]
-                                )
+                            expr =
+                                model.ext[:expansions][node][name][i] -
+                                sp.ext[:options][name][7]
                         else
-                            model.ext[:coverconstraint][node][name][i] =
-                                @constraint(
-                                    model,
-                                    0 ==
-                                    model.ext[:expansions][node][name][i] -
-                                    model.ext[:expansions][node.parent][name][i]
-                                )
+                            expr =
+                                model.ext[:expansions][node][name][i] -
+                                model.ext[:expansions][node.parent][name][i]
                         end
+                    end
+                    if sp.ext[:options][name][8] == :ge
+                        model.ext[:coverconstraint][node][name][i] =
+                            @constraint(model, 0 >= expr)
+                    elseif sp.ext[:options][name][8] == :le
+                        model.ext[:coverconstraint][node][name][i] =
+                            @constraint(model, 0 <= expr)
+                    elseif sp.ext[:options][name][8] == :eq
+                        model.ext[:coverconstraint][node][name][i] =
+                            @constraint(model, 0 == expr)
                     end
                 end
                 # if typeof(node)==Leaf && !sp.ext[:options][name][4]
@@ -328,46 +312,35 @@ function build_master(
                 # 	end
                 # end
             else
-                if sp.ext[:options][name][1] == :shutdown
-                    model.ext[:coverconstraint][node][name] = @constraint(
-                        model,
-                        0 >= sum(
+                if sp.ext[:options][name][1] == :cumulative
+                    if length(interval) != 0
+                        expr = sum(
                             model.ext[:expansions][past[index]][name] for
                             index in interval
-                        )
-                    )
-                elseif sp.ext[:options][name][1] == :expansion
-                    model.ext[:coverconstraint][node][name] = @constraint(
-                        model,
-                        0 <= sum(
-                            model.ext[:expansions][past[index]][name] for
-                            index in interval
-                        )
-                    )
-                elseif sp.ext[:options][name][1] == :enforced
-                    model.ext[:coverconstraint][node][name] = @constraint(
-                        model,
-                        0 == sum(
-                            model.ext[:expansions][past[index]][name] for
-                            index in interval
-                        )
-                    )
-                elseif sp.ext[:options][name][1] == :state
-                    if node.parent == nothing
-                        model.ext[:coverconstraint][node][name] = @constraint(
-                            model,
-                            0 ==
-                            -sp.ext[:options][name][7] +
-                            model.ext[:expansions][node][name]
                         )
                     else
-                        model.ext[:coverconstraint][node][name] = @constraint(
-                            model,
-                            0 ==
+                        expr = 0
+                    end
+                elseif sp.ext[:options][name][1] == :state
+                    if node.parent == nothing
+                        expr =
+                            model.ext[:expansions][node][name] -
+                            sp.ext[:options][name][7]
+                    else
+                        expr =
                             model.ext[:expansions][node][name] -
                             model.ext[:expansions][node.parent][name]
-                        )
                     end
+                end
+                if sp.ext[:options][name][8] == :ge
+                    model.ext[:coverconstraint][node][name] =
+                        @constraint(model, 0 >= expr)
+                elseif sp.ext[:options][name][8] == :le
+                    model.ext[:coverconstraint][node][name] =
+                        @constraint(model, 0 <= expr)
+                elseif sp.ext[:options][name][8] == :eq
+                    model.ext[:coverconstraint][node][name] =
+                        @constraint(model, 0 == expr)
                 end
                 # if typeof(node)==Leaf && !sp.ext[:options][name][4]
                 # 	@constraint(model, sum(model.ext[:expansions][past][name] for past in history_function(node))<=1)

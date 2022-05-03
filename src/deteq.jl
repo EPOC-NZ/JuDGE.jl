@@ -433,46 +433,32 @@ function build_deteq(
                     length(past),
                 )
             if isa(exps, VariableRef)
-                if sp.ext[:options][name][1] == :shutdown
-                    @constraint(
-                        model,
-                        model.ext[:vars][node][exps] >= sum(
-                            model.ext[:master_vars][past[index]][name] for
-                            index in interval
-                        )
-                    )
-                elseif sp.ext[:options][name][1] == :expansion
-                    @constraint(
-                        model,
-                        model.ext[:vars][node][exps] <= sum(
-                            model.ext[:master_vars][past[index]][name] for
-                            index in interval
-                        )
-                    )
-                elseif sp.ext[:options][name][1] == :enforced
-                    @constraint(
-                        model,
-                        model.ext[:vars][node][exps] == sum(
-                            model.ext[:master_vars][past[index]][name] for
-                            index in interval
-                        )
-                    )
-                elseif sp.ext[:options][name][1] == :state
-                    if node.parent == nothing
-                        @constraint(
-                            model,
-                            model.ext[:vars][node][exps] ==
-                            -sp.ext[:options][name][7] +
-                            model.ext[:master_vars][node][name]
-                        )
+                if sp.ext[:options][name][1] == :cumulative
+                    if length(interval) == 0
+                        expr = 0
                     else
-                        @constraint(
-                            model,
-                            model.ext[:vars][node][exps] ==
-                            model.ext[:master_vars][node][name] -
-                            model.ext[:master_vars][node.parent][name]
+                        expr = sum(
+                            model.ext[:master_vars][past[index]][name] for
+                            index in interval
                         )
                     end
+                elseif sp.ext[:options][name][1] == :state
+                    if node.parent == nothing
+                        expr =
+                            model.ext[:master_vars][node][name] -
+                            sp.ext[:options][name][7]
+                    else
+                        expr =
+                            model.ext[:master_vars][node][name] -
+                            model.ext[:master_vars][node.parent][name]
+                    end
+                end
+                if sp.ext[:options][name][8] == :ge
+                    @constraint(model, model.ext[:vars][node][exps] >= expr)
+                elseif sp.ext[:options][name][8] == :le
+                    @constraint(model, model.ext[:vars][node][exps] <= expr)
+                elseif sp.ext[:options][name][8] == :eq
+                    @constraint(model, model.ext[:vars][node][exps] == expr)
                 end
                 # if typeof(node)==Leaf && sp.ext[:options][name][1]==:shutdown
                 #     @constraint(model,sum(model.ext[:master_vars][n][name] for n in history_function(node))<=1)
@@ -480,46 +466,41 @@ function build_deteq(
             elseif typeof(exps) <: AbstractArray
                 for i in keys(exps)
                     key = densekey_to_tuple(i)
-                    if sp.ext[:options][name][1] == :shutdown
-                        @constraint(
-                            model,
-                            model.ext[:vars][node][exps[i]] >= sum(
-                                model.ext[:master_vars][past[index]][name][key]
-                                for index in interval
-                            )
-                        )
-                    elseif sp.ext[:options][name][1] == :expansion
-                        @constraint(
-                            model,
-                            model.ext[:vars][node][exps[i]] <= sum(
-                                model.ext[:master_vars][past[index]][name][key]
-                                for index in interval
-                            )
-                        )
-                    elseif sp.ext[:options][name][1] == :enforced
-                        @constraint(
-                            model,
-                            model.ext[:vars][node][exps[i]] == sum(
-                                model.ext[:master_vars][past[index]][name][key]
-                                for index in interval
-                            )
-                        )
-                    elseif sp.ext[:options][name][1] == :state
-                        if node.parent == nothing
-                            @constraint(
-                                model,
-                                model.ext[:vars][node][exps[i]] ==
-                                -sp.ext[:options][name][7] +
-                                model.ext[:master_vars][node][name][i]
-                            )
+                    if sp.ext[:options][name][1] == :cumulative
+                        if length(interval) == 0
+                            expr = 0
                         else
-                            @constraint(
-                                model,
-                                model.ext[:vars][node][exps[i]] ==
-                                model.ext[:master_vars][node][name][i] -
-                                model.ext[:master_vars][node.parent][name][i]
+                            expr = sum(
+                                model.ext[:master_vars][past[index]][name][key]
+                                for index in interval
                             )
                         end
+                    elseif sp.ext[:options][name][1] == :state
+                        if node.parent == nothing
+                            expr =
+                                model.ext[:master_vars][node][name][i] -
+                                sp.ext[:options][name][7]
+                        else
+                            expr =
+                                model.ext[:master_vars][node][name][i] -
+                                model.ext[:master_vars][node.parent][name][i]
+                        end
+                    end
+                    if sp.ext[:options][name][8] == :ge
+                        @constraint(
+                            model,
+                            model.ext[:vars][node][exps[i]] >= expr
+                        )
+                    elseif sp.ext[:options][name][8] == :le
+                        @constraint(
+                            model,
+                            model.ext[:vars][node][exps[i]] <= expr
+                        )
+                    elseif sp.ext[:options][name][8] == :eq
+                        @constraint(
+                            model,
+                            model.ext[:vars][node][exps[i]] == expr
+                        )
                     end
                     # if typeof(node)==Leaf && sp.ext[:options][name][1]==:shutdown
                     #     @constraint(model,sum(model.ext[:master_vars][n][name][i] for n in history_function(node))<=1)

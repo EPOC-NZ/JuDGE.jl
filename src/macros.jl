@@ -1,4 +1,4 @@
-macro judge_var(model, variable, class, aargs, aakws)
+macro judge_var(model, variable, class, relation, aargs, aakws)
     lag = 0
     span = 1000
     initial = 0.0
@@ -44,6 +44,10 @@ macro judge_var(model, variable, class, aargs, aakws)
             penalty = b
         elseif a == :state_name
             state_name = b
+        elseif (class == :(:state) && a == :free_disposal)
+            if b == true
+                relation = :(:ge)
+            end
         else
             ex = quote
                 error("Invalid keyword argument for @" * string($class) * " macro")
@@ -66,12 +70,16 @@ macro judge_var(model, variable, class, aargs, aakws)
         state_name = :nothing
     end
 
-    if !(class == :state || class == :enforced) && penalty != nothing
+    if !(relation == :eq) && penalty != nothing
         @warn("'penalty' keyword has been ignored")
         penalty = nothing
     end
 
     tmp = nothing
+
+    if eval(relation) ∉ [:le, :ge, :eq]
+        error("Invalid 'relation'. Must be ':le', ':ge' or ':eq'.")
+    end
 
     ex = quote
         if !haskey($model.ext, :expansions)
@@ -99,6 +107,7 @@ macro judge_var(model, variable, class, aargs, aakws)
                 $lb,
                 $ub,
                 $initial,
+                $relation,
                 $penalty,
             )
         else
@@ -111,6 +120,7 @@ macro judge_var(model, variable, class, aargs, aakws)
                 $lb,
                 $ub,
                 $initial,
+                $relation,
                 $penalty,
             )
             $state_name = tmp
@@ -156,7 +166,7 @@ macro expansion(model, variable, args...)
         end
     end
     ex = quote
-        JuDGE.@judge_var($model, $variable, :expansion, $aargs, $aakws)
+        JuDGE.@judge_var($model, $variable, :cumulative, :le, $aargs, $aakws)
     end
 
     return esc(ex)
@@ -199,7 +209,7 @@ macro shutdown(model, variable, args...)
         end
     end
     ex = quote
-        JuDGE.@judge_var($model, $variable, :shutdown, $aargs, $aakws)
+        JuDGE.@judge_var($model, $variable, :cumulative, :ge, $aargs, $aakws)
     end
 
     return esc(ex)
@@ -246,7 +256,7 @@ macro enforced(model, variable, args...)
         end
     end
     ex = quote
-        JuDGE.@judge_var($model, $variable, :enforced, $aargs, $aakws)
+        JuDGE.@judge_var($model, $variable, :cumulative, :eq, $aargs, $aakws)
     end
 
     return esc(ex)
@@ -293,7 +303,7 @@ macro state(model, variable, args...)
         end
     end
     ex = quote
-        JuDGE.@judge_var($model, $variable, :state, $aargs, $aakws)
+        JuDGE.@judge_var($model, $variable, :state, :eq, $aargs, $aakws)
     end
 
     return esc(ex)
