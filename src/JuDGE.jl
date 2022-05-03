@@ -1159,20 +1159,66 @@ function set_policy!(
         end
         JuMP.fix(var[i], val2, force = true)
         val = 0.0
-        for n in hist
-            if haskey(mapping, n)
-                v = jmodel2.master_problem.ext[:expansions][mapping[n]][name]
-                if rounded
-                    if i == 0
-                        val += round(JuMP.value(v))
+        if options[1] in [:expansion, :shutdown, :enforced]
+            for n in hist
+                if haskey(mapping, n)
+                    v =
+                        jmodel2.master_problem.ext[:expansions][mapping[n]][name]
+                    if rounded
+                        if i == 0
+                            val += round(JuMP.value(v))
+                        else
+                            val += round(JuMP.value(v[i]))
+                        end
                     else
-                        val += round(JuMP.value(v[i]))
+                        if i == 0
+                            val += JuMP.value(v)
+                        else
+                            val += JuMP.value(v[i])
+                        end
                     end
-                else
-                    if i == 0
-                        val += JuMP.value(v)
+                end
+            end
+        elseif options[1] in [:state]
+            if node.parent != nothing
+                if haskey(mapping, node) && haskey(mapping, node.parent)
+                    v =
+                        jmodel2.master_problem.ext[:expansions][mapping[node]][name]
+                    v2 =
+                        jmodel2.master_problem.ext[:expansions][mapping[node.parent]][name]
+                    if rounded
+                        if i == 0
+                            val = round(JuMP.value(v) - JuMP.value(v2))
+                        else
+                            val = round(JuMP.value(v[i]) - JuMP.value(v2[i]))
+                        end
                     else
-                        val += JuMP.value(v[i])
+                        if i == 0
+                            val = JuMP.value(v) - JuMP.value(v2)
+                        else
+                            val = JuMP.value(v[i]) - JuMP.value(v2[i])
+                        end
+                    end
+                end
+            else
+                if haskey(mapping, node)
+                    v =
+                        jmodel2.master_problem.ext[:expansions][mapping[node]][name]
+                    if rounded
+                        if i == 0
+                            val =
+                                round(JuMP.value(v) - sp.ext[:options][name][7])
+                        else
+                            val = round(
+                                JuMP.value(v[i]) - sp.ext[:options][name][7],
+                            )
+                        end
+                    else
+                        if i == 0
+                            val = JuMP.value(v) - sp.ext[:options][name][7]
+                        else
+                            val = JuMP.value(v[i]) - sp.ext[:options][name][7]
+                        end
                     end
                 end
             end
@@ -1188,6 +1234,8 @@ function set_policy!(
         elseif options[1] == :shutdown
             bc = BranchConstraint(sp_var, :ge, val, node)
         elseif options[1] == :enforced
+            bc = BranchConstraint(sp_var, :eq, val, node)
+        elseif options[1] == :state
             bc = BranchConstraint(sp_var, :eq, val, node)
         end
         return bc
