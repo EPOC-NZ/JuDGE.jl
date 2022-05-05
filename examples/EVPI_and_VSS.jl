@@ -151,7 +151,7 @@ function policy_comparison(
         )
     else
         JuDGE.remove_from_dictionary!(vis, :itemcost)
-        println(JuDGE.get_active_columns(HN; inttol = 10^-7))
+        JuDGE.get_active_columns(HN; inttol = 10^-7)
     end
     # code for EEV and rolling horizon
     RH = nothing

@@ -325,7 +325,7 @@ function build_deteq(
                 variable = sp.ext[:expansions][name]
                 model.ext[:master_vars][node][name] =
                     JuDGE.copy_variable!(model, variable)
-                model.ext[:master_names][node][name] = string(variable)
+                model.ext[:master_names][node][name] = string(name)
             elseif typeof(exps) <: AbstractArray
                 variables = sp.ext[:expansions][name]
                 model.ext[:master_vars][node][name] = Dict()
@@ -335,7 +335,7 @@ function build_deteq(
                     model.ext[:master_vars][node][name][key] =
                         JuDGE.copy_variable!(model, variables[index])
                     model.ext[:master_names][node][name][key] =
-                        string(variables[index])
+                        string(name) * "[" * string(index) * "]"
                 end
             end
             if sp.ext[:options][name][5] != nothing
@@ -426,6 +426,7 @@ function build_deteq(
 
     for (node, sp) in sub_problems
         past = history(node)
+        leafnodes = get_leafnodes(node)
         for (name, exps) in sp.ext[:expansions]
             interval =
                 sp.ext[:options][name][2]+1:min(
@@ -453,13 +454,31 @@ function build_deteq(
                             model.ext[:master_vars][node.parent][name]
                     end
                 end
-                if sp.ext[:options][name][8] == :ge
-                    @constraint(model, model.ext[:vars][node][exps] >= expr)
-                elseif sp.ext[:options][name][8] == :le
-                    @constraint(model, model.ext[:vars][node][exps] <= expr)
-                elseif sp.ext[:options][name][8] == :eq
-                    @constraint(model, model.ext[:vars][node][exps] == expr)
+                if sp.ext[:options][name][8][1] != Inf
+                    v1 = @variable(model)
+                    set_lower_bound(v1, 0)
+                    expr -= v1
+                    for leaf in leafnodes
+                        set_normalized_coefficient(
+                            scen_con[leaf],
+                            v1,
+                            sp.ext[:options][name][8][1],
+                        )
+                    end
                 end
+                if sp.ext[:options][name][8][2] != Inf
+                    v2 = @variable(model)
+                    set_lower_bound(v2, 0)
+                    expr += v2
+                    for leaf in leafnodes
+                        set_normalized_coefficient(
+                            scen_con[leaf],
+                            v2,
+                            sp.ext[:options][name][8][2],
+                        )
+                    end
+                end
+                @constraint(model, model.ext[:vars][node][exps] == expr)
                 # if typeof(node)==Leaf && sp.ext[:options][name][1]==:shutdown
                 #     @constraint(model,sum(model.ext[:master_vars][n][name] for n in history_function(node))<=1)
                 # end
@@ -478,30 +497,40 @@ function build_deteq(
                     elseif sp.ext[:options][name][1] == :state
                         if node.parent == nothing
                             expr =
-                                model.ext[:master_vars][node][name][i] -
+                                model.ext[:master_vars][node][name][key] -
                                 sp.ext[:options][name][7]
                         else
                             expr =
-                                model.ext[:master_vars][node][name][i] -
-                                model.ext[:master_vars][node.parent][name][i]
+                                model.ext[:master_vars][node][name][key] -
+                                model.ext[:master_vars][node.parent][name][key]
                         end
                     end
-                    if sp.ext[:options][name][8] == :ge
-                        @constraint(
-                            model,
-                            model.ext[:vars][node][exps[i]] >= expr
-                        )
-                    elseif sp.ext[:options][name][8] == :le
-                        @constraint(
-                            model,
-                            model.ext[:vars][node][exps[i]] <= expr
-                        )
-                    elseif sp.ext[:options][name][8] == :eq
-                        @constraint(
-                            model,
-                            model.ext[:vars][node][exps[i]] == expr
-                        )
+                    if sp.ext[:options][name][8][1] != Inf
+                        v1 = @variable(model)
+                        set_lower_bound(v1, 0)
+                        expr -= v1
+                        for leaf in leafnodes
+                            set_normalized_coefficient(
+                                scen_con[leaf],
+                                v1,
+                                sp.ext[:options][name][8][1],
+                            )
+                        end
                     end
+                    if sp.ext[:options][name][8][2] != Inf
+                        v2 = @variable(model)
+                        set_lower_bound(v2, 0)
+                        expr += v2
+                        for leaf in leafnodes
+                            set_normalized_coefficient(
+                                scen_con[leaf],
+                                v2,
+                                sp.ext[:options][name][8][2],
+                            )
+                        end
+                    end
+                    @constraint(model, model.ext[:vars][node][exps[i]] == expr)
+
                     # if typeof(node)==Leaf && sp.ext[:options][name][1]==:shutdown
                     #     @constraint(model,sum(model.ext[:master_vars][n][name][i] for n in history_function(node))<=1)
                     # end

@@ -33,7 +33,8 @@ function inventory(;
             state_name = stock,
             lb = 0,
             ub = 200,
-            initial = 0
+            initial = 0,
+            penalty = [1.0, 0.0],
         )
 
         @ongoingcosts(sp, 0.01 * stock)

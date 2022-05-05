@@ -213,58 +213,12 @@ function build_master(
         push!(risk_objectives, risk_objective)
     end
 
-    for leaf in leafs
-        nodes = history(leaf)
-        for n in eachindex(nodes)
-            node = nodes[n]
-            sp = sub_problems[node]
-            df = discount_factor^depth(node)
-            for (name, variable) in sp.ext[:expansions]
-                interval =
-                    max(
-                        1,
-                        n - sp.ext[:options][name][3] -
-                        sp.ext[:options][name][2] + 1,
-                    ):n-sp.ext[:options][name][2]
-                disc = Dict{Int,Float64}()
-                for i in interval
-                    disc[i] = df / discount_factor^(i - 1)
-                end
-                if typeof(variable) <: AbstractArray
-                    for i in eachindex(variable)
-                        cost_coef =
-                            df * coef(sp.ext[:capitalcosts], variable[i])
-                        for j in interval
-                            cost_coef +=
-                                disc[j] *
-                                coef(sp.ext[:ongoingcosts], variable[i])
-                        end
-                        set_normalized_coefficient(
-                            model.ext[:scenprofit_con][leaf],
-                            model.ext[:expansions][node][name][i],
-                            cost_coef,
-                        )
-                    end
-                else
-                    cost_coef = df * coef(sp.ext[:capitalcosts], variable)
-                    for j in interval
-                        cost_coef +=
-                            disc[j] * coef(sp.ext[:ongoingcosts], variable)
-                    end
-                    set_normalized_coefficient(
-                        model.ext[:scenprofit_con][leaf],
-                        model.ext[:expansions][node][name],
-                        cost_coef,
-                    )
-                end
-            end
-        end
-    end
-
     # create the cover constraints
     model.ext[:coverconstraint] = Dict{AbstractTree,Dict{Symbol,Any}}()
+    model.ext[:cover_slacks] = Dict{AbstractTree,Dict{Symbol,Any}}()
     for (node, sp) in sub_problems
         model.ext[:coverconstraint][node] = Dict{Symbol,Any}()
+        model.ext[:cover_slacks][node] = Dict{Symbol,Any}()
         past = history(node)
         for (name, variable) in sp.ext[:expansions]
             interval =
@@ -274,6 +228,7 @@ function build_master(
                 )
             if typeof(variable) <: AbstractArray
                 model.ext[:coverconstraint][node][name] = Dict()
+                model.ext[:cover_slacks][node][name] = Dict()
                 for i in eachindex(variable)
                     if sp.ext[:options][name][1] == :cumulative
                         if length(interval) != 0
@@ -295,16 +250,23 @@ function build_master(
                                 model.ext[:expansions][node.parent][name][i]
                         end
                     end
-                    if sp.ext[:options][name][8] == :ge
-                        model.ext[:coverconstraint][node][name][i] =
-                            @constraint(model, 0 >= expr)
-                    elseif sp.ext[:options][name][8] == :le
-                        model.ext[:coverconstraint][node][name][i] =
-                            @constraint(model, 0 <= expr)
-                    elseif sp.ext[:options][name][8] == :eq
-                        model.ext[:coverconstraint][node][name][i] =
-                            @constraint(model, 0 == expr)
+
+                    model.ext[:cover_slacks][node][name][i] = Dict()
+                    if sp.ext[:options][name][8][1] != Inf
+                        v1 = @variable(model)
+                        set_lower_bound(v1, 0)
+                        expr -= v1
+                        model.ext[:cover_slacks][node][name][i][1] = v1
                     end
+                    if sp.ext[:options][name][8][2] != Inf
+                        v2 = @variable(model)
+                        set_lower_bound(v2, 0)
+                        expr += v2
+                        model.ext[:cover_slacks][node][name][i][2] = v2
+                    end
+
+                    model.ext[:coverconstraint][node][name][i] =
+                        @constraint(model, 0 == expr)
                 end
                 # if typeof(node)==Leaf && !sp.ext[:options][name][4]
                 # 	for i in eachindex(variable)
@@ -332,19 +294,104 @@ function build_master(
                             model.ext[:expansions][node.parent][name]
                     end
                 end
-                if sp.ext[:options][name][8] == :ge
-                    model.ext[:coverconstraint][node][name] =
-                        @constraint(model, 0 >= expr)
-                elseif sp.ext[:options][name][8] == :le
-                    model.ext[:coverconstraint][node][name] =
-                        @constraint(model, 0 <= expr)
-                elseif sp.ext[:options][name][8] == :eq
-                    model.ext[:coverconstraint][node][name] =
-                        @constraint(model, 0 == expr)
+                model.ext[:cover_slacks][node][name] = Dict()
+                if sp.ext[:options][name][8][1] != Inf
+                    v1 = @variable(model)
+                    set_lower_bound(v1, 0)
+                    expr -= v1
+                    model.ext[:cover_slacks][node][name][1] = v1
                 end
+                if sp.ext[:options][name][8][2] != Inf
+                    v2 = @variable(model)
+                    set_lower_bound(v2, 0)
+                    expr += v2
+                    model.ext[:cover_slacks][node][name][2] = v2
+                end
+
+                model.ext[:coverconstraint][node][name] =
+                    @constraint(model, 0 == expr)
                 # if typeof(node)==Leaf && !sp.ext[:options][name][4]
                 # 	@constraint(model, sum(model.ext[:expansions][past][name] for past in history_function(node))<=1)
                 # end
+            end
+        end
+    end
+
+    for leaf in leafs
+        nodes = history(leaf)
+        for n in eachindex(nodes)
+            node = nodes[n]
+            sp = sub_problems[node]
+            df = discount_factor^depth(node)
+            for (name, variable) in sp.ext[:expansions]
+                interval =
+                    max(
+                        1,
+                        n - sp.ext[:options][name][3] -
+                        sp.ext[:options][name][2] + 1,
+                    ):n-sp.ext[:options][name][2]
+                disc = Dict{Int,Float64}()
+                for i in interval
+                    disc[i] = df / discount_factor^(i - 1)
+                end
+                slacks = model.ext[:cover_slacks][node][name]
+                if typeof(variable) <: AbstractArray
+                    for i in eachindex(variable)
+                        cost_coef =
+                            df * coef(sp.ext[:capitalcosts], variable[i])
+                        for j in interval
+                            cost_coef +=
+                                disc[j] *
+                                coef(sp.ext[:ongoingcosts], variable[i])
+                        end
+                        set_normalized_coefficient(
+                            model.ext[:scenprofit_con][leaf],
+                            model.ext[:expansions][node][name][i],
+                            cost_coef,
+                        )
+
+                        if haskey(slacks[i], 1)
+                            set_normalized_coefficient(
+                                model.ext[:scenprofit_con][leaf],
+                                slacks[i][1],
+                                sp.ext[:options][name][8][1],
+                            )
+                        end
+                        if haskey(slacks[i], 2)
+                            set_normalized_coefficient(
+                                model.ext[:scenprofit_con][leaf],
+                                slacks[i][2],
+                                sp.ext[:options][name][8][2],
+                            )
+                        end
+                    end
+                else
+                    cost_coef = df * coef(sp.ext[:capitalcosts], variable)
+                    for j in interval
+                        cost_coef +=
+                            disc[j] * coef(sp.ext[:ongoingcosts], variable)
+                    end
+                    set_normalized_coefficient(
+                        model.ext[:scenprofit_con][leaf],
+                        model.ext[:expansions][node][name],
+                        cost_coef,
+                    )
+
+                    if haskey(slacks, 1)
+                        set_normalized_coefficient(
+                            model.ext[:scenprofit_con][leaf],
+                            slacks[1],
+                            sp.ext[:options][name][8][1],
+                        )
+                    end
+                    if haskey(slacks, 2)
+                        set_normalized_coefficient(
+                            model.ext[:scenprofit_con][leaf],
+                            slacks[2],
+                            sp.ext[:options][name][8][2],
+                        )
+                    end
+                end
             end
         end
     end

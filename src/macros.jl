@@ -1,4 +1,4 @@
-macro judge_var(model, variable, class, relation, aargs, aakws)
+macro judge_var(model, variable, class, aargs, aakws)
     lag = 0
     span = 1000
     initial = 0.0
@@ -16,9 +16,7 @@ macro judge_var(model, variable, class, relation, aargs, aakws)
     if length(aargs) != 1
         ex = quote
             error(
-                "@" *
-                string($class) *
-                " macro takes at most three positional arguments",
+                "Master + subproblem variable macro takes at most three positional arguments",
             )
         end
         return ex
@@ -41,16 +39,24 @@ macro judge_var(model, variable, class, relation, aargs, aakws)
         elseif a == :ub
             ub = b
         elseif a == :penalty
-            penalty = b
+            if typeof(b) <: Array &&
+               length(b) == 2 &&
+               b[1] >= 0 &&
+               b[2] >= 0 &&
+               b[1] + b[2] > 0
+                penalty = b
+            else
+                error("Invalid penality vector.")
+            end
         elseif a == :state_name
             state_name = b
-        elseif (class == :(:state) && a == :free_disposal)
-            if b == true
-                relation = :(:ge)
-            end
         else
             ex = quote
-                error("Invalid keyword argument for @" * string($class) * " macro")
+                error(
+                    "Invalid keyword '" *
+                    string($(Meta.quot(a))) *
+                    "' for master + subproblem variable macro",
+                )
             end
             return ex
         end
@@ -70,16 +76,7 @@ macro judge_var(model, variable, class, relation, aargs, aakws)
         state_name = :nothing
     end
 
-    if !(relation == :eq) && penalty != nothing
-        @warn("'penalty' keyword has been ignored")
-        penalty = nothing
-    end
-
     tmp = nothing
-
-    if eval(relation) ∉ [:le, :ge, :eq]
-        error("Invalid 'relation'. Must be ':le', ':ge' or ':eq'.")
-    end
 
     ex = quote
         if !haskey($model.ext, :expansions)
@@ -107,7 +104,6 @@ macro judge_var(model, variable, class, relation, aargs, aakws)
                 $lb,
                 $ub,
                 $initial,
-                $relation,
                 $penalty,
             )
         else
@@ -120,7 +116,6 @@ macro judge_var(model, variable, class, relation, aargs, aakws)
                 $lb,
                 $ub,
                 $initial,
-                $relation,
                 $penalty,
             )
             $state_name = tmp
@@ -158,15 +153,24 @@ This macro has a third, unnamed, argument which can be set to Con, Bin, or Int, 
 macro expansion(model, variable, args...)
     aargs = []
     aakws = Pair{Symbol,Any}[]
+    custom_penalty = false
     for el in args
         if Meta.isexpr(el, :(=))
             push!(aakws, Pair(el.args...))
+            if el.args[1] == :penalty
+                custom_penalty = true
+            end
         else
             push!(aargs, el)
         end
     end
+
+    if !custom_penalty
+        push!(aakws, :penalty => [0, Inf])
+    end
+
     ex = quote
-        JuDGE.@judge_var($model, $variable, :cumulative, :le, $aargs, $aakws)
+        JuDGE.@judge_var($model, $variable, :cumulative, $aargs, $aakws)
     end
 
     return esc(ex)
@@ -201,15 +205,24 @@ This macro has a third, unnamed, argument which can be set to Con, Bin, or Int, 
 macro shutdown(model, variable, args...)
     aargs = []
     aakws = Pair{Symbol,Any}[]
+    custom_penalty = false
     for el in args
         if Meta.isexpr(el, :(=))
             push!(aakws, Pair(el.args...))
+            if el.args[1] == :penalty
+                custom_penalty = true
+            end
         else
             push!(aargs, el)
         end
     end
+
+    if !custom_penalty
+        push!(aakws, :penalty => [Inf, 0])
+    end
+
     ex = quote
-        JuDGE.@judge_var($model, $variable, :cumulative, :ge, $aargs, $aakws)
+        JuDGE.@judge_var($model, $variable, :cumulative, $aargs, $aakws)
     end
 
     return esc(ex)
@@ -248,15 +261,24 @@ This macro has a third, unnamed, argument which can be set to Con, Bin, or Int, 
 macro enforced(model, variable, args...)
     aargs = []
     aakws = Pair{Symbol,Any}[]
+    custom_penalty = false
     for el in args
         if Meta.isexpr(el, :(=))
             push!(aakws, Pair(el.args...))
+            if el.args[1] == :penalty
+                custom_penalty = true
+            end
         else
             push!(aargs, el)
         end
     end
+
+    if !custom_penalty
+        push!(aakws, :penalty => [Inf, Inf])
+    end
+
     ex = quote
-        JuDGE.@judge_var($model, $variable, :cumulative, :eq, $aargs, $aakws)
+        JuDGE.@judge_var($model, $variable, :cumulative, $aargs, $aakws)
     end
 
     return esc(ex)
@@ -295,15 +317,38 @@ See the `inventory.jl` example to see how this should be implemented.
 macro state(model, variable, args...)
     aargs = []
     aakws = Pair{Symbol,Any}[]
+    custom_penalty = false
+    free_disposal = false
     for el in args
         if Meta.isexpr(el, :(=))
+            if el.args[1] == :penalty
+                custom_penalty = true
+                push!(aakws, Pair(el.args[1], eval(el.args[2])))
+                continue
+            elseif el.args[1] == :free_disposal
+                if el.args[2]
+                    free_disposal = true
+                end
+                continue
+            end
             push!(aakws, Pair(el.args...))
         else
             push!(aargs, el)
         end
     end
+
+    if !custom_penalty
+        if free_disposal
+            push!(aakws, :penalty => [Inf, 0])
+        else
+            push!(aakws, :penalty => [Inf, Inf])
+        end
+    elseif free_disposal
+        error("Cannot set both free_disposal and penalty for @state variable.")
+    end
+
     ex = quote
-        JuDGE.@judge_var($model, $variable, :state, :eq, $aargs, $aakws)
+        JuDGE.@judge_var($model, $variable, :state, $aargs, $aakws)
     end
 
     return esc(ex)

@@ -1015,6 +1015,7 @@ function fix_expansions(jmodel::JuDGEModel, force_match::Bool)
         set_objective_coefficient(sp, sp.ext[:objective], 1.0)
         for (name, var) in jmodel.master_problem.ext[:expansions][node]
             var2 = sp.ext[:expansions][name]
+            slacks = jmodel.master_problem.ext[:cover_slacks][node][name]
             if typeof(var) <: AbstractArray
                 for i in eachindex(var)
                     value = 0.0
@@ -1044,21 +1045,29 @@ function fix_expansions(jmodel::JuDGEModel, force_match::Bool)
                             end
                         end
                     end
-                    if sp.ext[:options][name][8] == :ge
-                        if force_match
-                            JuMP.fix(var2[i], value, force = true)
-                        else
-                            JuMP.set_lower_bound(var2[i], value)
-                        end
-                    elseif sp.ext[:options][name][8] == :le
-                        if force_match
-                            JuMP.fix(var2[i], value, force = true)
-                        else
-                            JuMP.set_upper_bound(var2[i], value)
-                        end
-                    elseif sp.ext[:options][name][8] == :eq
-                        JuMP.fix(var2[i], value, force = true)
+
+                    if haskey(slacks[i], 1)
+                        value -= JuMP.value(slacks[i][1])
                     end
+                    if haskey(slacks[i], 2)
+                        value += JuMP.value(slacks[i][2])
+                    end
+                    JuMP.fix(var2[i], value, force = true)
+                    # if sp.ext[:options][name][8][2] == 0
+                    #     if force_match
+                    #         JuMP.fix(var2[i], value, force = true)
+                    #     else
+                    #         JuMP.set_lower_bound(var2[i], value)
+                    #     end
+                    # elseif sp.ext[:options][name][8][1] == 0
+                    #     if force_match
+                    #         JuMP.fix(var2[i], value, force = true)
+                    #     else
+                    #         JuMP.set_upper_bound(var2[i], value)
+                    #     end
+                    # elseif sp.ext[:options][name][8][1] == Inf && sp.ext[:options][name][8][2] == Inf
+                    #     JuMP.fix(var2[i], value, force = true)
+                    # end
                     set_objective_coefficient(sp, var2[i], 0.0)
                 end
             elseif isa(var, VariableRef)
@@ -1089,21 +1098,31 @@ function fix_expansions(jmodel::JuDGEModel, force_match::Bool)
                         end
                     end
                 end
-                if sp.ext[:options][name][8] == :ge
-                    if force_match
-                        JuMP.fix(var2, value, force = true)
-                    else
-                        JuMP.set_lower_bound(var2, value)
-                    end
-                elseif sp.ext[:options][name][8] == :le
-                    if force_match
-                        JuMP.fix(var2, value, force = true)
-                    else
-                        JuMP.set_upper_bound(var2, value)
-                    end
-                elseif sp.ext[:options][name][8] == :eq
-                    JuMP.fix(var2, value, force = true)
+
+                if haskey(slacks, 1)
+                    value -= JuMP.value(slacks[1])
                 end
+                if haskey(slacks, 2)
+                    value += JuMP.value(slacks[2])
+                end
+
+                JuMP.fix(var2, value, force = true)
+
+                # if sp.ext[:options][name][8][2] == 0
+                #     if force_match
+                #         JuMP.fix(var2, value, force = true)
+                #     else
+                #         JuMP.set_lower_bound(var2, value)
+                #     end
+                # elseif sp.ext[:options][name][8][1] == 0
+                #     if force_match
+                #         JuMP.fix(var2, value, force = true)
+                #     else
+                #         JuMP.set_upper_bound(var2, value)
+                #     end
+                # elseif sp.ext[:options][name][8][1] == Inf && sp.ext[:options][name][8][2] == Inf
+                #     JuMP.fix(var2, value, force = true)
+                # end
                 set_objective_coefficient(sp, var2, 0.0)
             end
         end
@@ -1177,7 +1196,7 @@ function set_policy!(
                     end
                 end
             end
-        elseif options[1] in [:state]
+        elseif options[1] == :state
             if node.parent != nothing
                 if haskey(mapping, node) && haskey(mapping, node.parent)
                     v =
@@ -1221,12 +1240,48 @@ function set_policy!(
                 end
             end
         end
+        slacks = jmodel2.master_problem.ext[:cover_slacks][mapping[node]][name]
+
+        if rounded
+            if i == 0
+                if haskey(slacks, 1)
+                    val -= round(JuMP.value(slacks[1]))
+                end
+                if haskey(slacks, 2)
+                    val += round(JuMP.value(slacks[2]))
+                end
+            else
+                if haskey(slacks[i], 1)
+                    val -= round(JuMP.value(slacks[i][1]))
+                end
+                if haskey(slacks[i], 2)
+                    val += round(JuMP.value(slacks[i][2]))
+                end
+            end
+        else
+            if i == 0
+                if haskey(slacks, 1)
+                    val -= JuMP.value(slacks[1])
+                end
+                if haskey(slacks, 2)
+                    val += JuMP.value(slacks[2])
+                end
+            else
+                if haskey(slacks[i], 1)
+                    val -= JuMP.value(slacks[i][1])
+                end
+                if haskey(slacks[i], 2)
+                    val += JuMP.value(slacks[i][2])
+                end
+            end
+        end
+
         bc = nothing
         sp_var =
             i == 0 ? jmodel.sub_problems[node][name] :
             jmodel.sub_problems[node][name][i]
 
-        bc = BranchConstraint(sp_var, options[8], val, node)
+        bc = BranchConstraint(sp_var, :eq, val, node)
 
         return bc
     end
@@ -1372,13 +1427,34 @@ function resolve_fixed(jmodel::JuDGEModel)
             obj += objective_value(jmodel.sub_problems[node])
             for key in keys(jmodel.master_problem.ext[:expansions][node])
                 var = jmodel.master_problem.ext[:expansions][node][key]
+                slacks = jmodel.master_problem.ext[:cover_slacks][node][key]
                 if isa(var, VariableRef)
                     obj += JuMP.value(var) * normalized_coefficient(con, var)
+                    if haskey(slacks, 1) && JuMP.value(slacks[1]) > 10e-8
+                        obj +=
+                            JuMP.value(slacks[1]) *
+                            normalized_coefficient(con, slacks[1])
+                    end
+                    if haskey(slacks, 2) && JuMP.value(slacks[2]) > 10e-8
+                        obj +=
+                            JuMP.value(slacks[2]) *
+                            normalized_coefficient(con, slacks[2])
+                    end
                 elseif typeof(var) <: AbstractArray
                     for v in eachindex(var)
                         obj +=
                             JuMP.value(var[v]) *
                             normalized_coefficient(con, var[v])
+                        if haskey(slacks[v], 1)
+                            obj +=
+                                JuMP.value(slacks[v][1]) *
+                                normalized_coefficient(con, slacks[v][1])
+                        end
+                        if haskey(slacks[v], 2)
+                            obj +=
+                                JuMP.value(slacks[v][2]) *
+                                normalized_coefficient(con, slacks[v][2])
+                        end
                     end
                 end
             end

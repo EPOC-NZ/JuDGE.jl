@@ -14,6 +14,70 @@ include(joinpath(_EXAMPLES_DIR, "solvers", "setup_glpk.jl"))
         @test TreeC()
         @test TreeD()
     end
+    @testset "Deterministic" begin
+        include(joinpath(_EXAMPLES_DIR, "deterministic.jl"))
+        @test deterministic(
+            formulation = :decomp,
+            var_type = :expansion,
+            discount = 1.0,
+        ) ≈ 50 atol = 1e-3
+        @test deterministic(
+            formulation = :decomp,
+            var_type = :enforced,
+            discount = 1.0,
+        ) ≈ 52 atol = 1e-3
+        @test deterministic(
+            formulation = :decomp,
+            var_type = :expansion,
+            discount = 0.85,
+        ) ≈ 44.5325 atol = 1e-3
+        @test deterministic(
+            formulation = :decomp,
+            var_type = :enforced,
+            discount = 0.85,
+        ) ≈ 45.6075 atol = 1e-3
+        @test deterministic(
+            formulation = :decomp,
+            var_type = :expansion,
+            discount = 0.8,
+        ) ≈ 42.28 atol = 1e-3
+        @test deterministic(
+            formulation = :decomp,
+            var_type = :enforced,
+            discount = 0.8,
+        ) ≈ 43.08 atol = 1e-3
+        @test deterministic(
+            formulation = :deteq,
+            var_type = :expansion,
+            discount = 1.0,
+        ) ≈ 50 atol = 1e-3
+        @test deterministic(
+            formulation = :deteq,
+            var_type = :enforced,
+            discount = 1.0,
+        ) ≈ 52 atol = 1e-3
+        @test deterministic(
+            formulation = :deteq,
+            var_type = :expansion,
+            discount = 0.85,
+        ) ≈ 44.5325 atol = 1e-3
+        @test deterministic(
+            formulation = :deteq,
+            var_type = :enforced,
+            discount = 0.85,
+        ) ≈ 45.6075 atol = 1e-3
+        @test deterministic(
+            formulation = :deteq,
+            var_type = :expansion,
+            discount = 0.8,
+        ) ≈ 42.28 atol = 1e-3
+        @test deterministic(
+            formulation = :deteq,
+            var_type = :enforced,
+            discount = 0.8,
+        ) ≈ 43.08 atol = 1e-3
+    end
+
     @testset "Multistage newsvendor" begin
         include(joinpath(_EXAMPLES_DIR, "newsvendor.jl"))
         @test newsvendor(cost = 5.0, price = 8.0, demands = [10, 80, 100]) ≈
@@ -42,50 +106,47 @@ include(joinpath(_EXAMPLES_DIR, "solvers", "setup_glpk.jl"))
 
     @testset "Inventory" begin
         include(joinpath(_EXAMPLES_DIR, "inventory.jl"))
-        @test inventory(
-            depth = 2,
-            degree = 2,
-            price_array = [
-                0.1172393013694979,
-                0.25653400961083994,
-                4.2365322616699785e-6,
-                0.7161790267880648,
-                0.05823720128592225,
-                0.04993686809222453,
-                0.9201443039152302,
-            ],
-        ) ≈ -13.949 atol = 1e-3
+        prices = [
+            0.1172393013694979,
+            0.25653400961083994,
+            4.2365322616699785e-6,
+            0.7161790267880648,
+            0.05823720128592225,
+            0.04993686809222453,
+            0.9201443039152302,
+        ]
+        @test inventory(depth = 2, degree = 2, price_array = prices) ≈ -13.949 atol =
+            1e-3
 
         @test inventory(
             depth = 2,
             degree = 2,
-            price_array = [
-                0.1172393013694979,
-                0.25653400961083994,
-                4.2365322616699785e-6,
-                0.7161790267880648,
-                0.05823720128592225,
-                0.04993686809222453,
-                0.9201443039152302,
-            ],
+            price_array = prices,
             risk = Risk(0.1, bound = 1.0),
         ) ≈ -10.467 atol = 1e-3
 
         @test inventory(
             depth = 2,
             degree = 2,
-            price_array = [
-                0.1172393013694979,
-                0.25653400961083994,
-                4.2365322616699785e-6,
-                0.7161790267880648,
-                0.05823720128592225,
-                0.04993686809222453,
-                0.9201443039152302,
-            ],
+            price_array = prices,
             risk = Risk(0.1, bound = 1.0),
             formulation = :deteq,
         ) ≈ -10.467 atol = 1e-3
+
+        @test inventory(
+            depth = 2,
+            degree = 2,
+            price_array = 5 * prices,
+            risk = Risk(0.1, bound = 1.0),
+        ) ≈ -85.815 atol = 1e-3
+
+        @test inventory(
+            depth = 2,
+            degree = 2,
+            price_array = 5 * prices,
+            risk = Risk(0.1, bound = 1.0),
+            formulation = :deteq,
+        ) ≈ -85.815 atol = 1e-3
     end
 
     @testset "Stochastic Knapsack" begin
