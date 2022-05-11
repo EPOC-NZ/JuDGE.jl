@@ -589,17 +589,7 @@ function visualize_tree(
     close(file)
 
     if view_file
-        if Sys.iswindows()
-            run(`$(ENV["COMSPEC"]) /c start $(filename)`)
-        elseif Sys.isapple()
-            run(`open $(filename)`)
-        elseif Sys.islinux() || Sys.isbsd()
-            run(`xdg-open $(filename)`)
-        else
-            error(
-                "Unable to show plot. Try opening the file $(filename) manually.",
-            )
-        end
+        run_file(filename)
     end
 
     return

@@ -1,0 +1,70 @@
+	body{
+		background: #5e6669;
+		padding: 0;
+		margin: 0;
+	}
+	.frame{
+		position: absolute;
+		border: 1px solid #0;
+		background: #FFFFFF;
+		border-radius: 0px;
+		z-index: 10;
+		overflow: hidden;
+	}
+	.full{
+		position: relative;
+		left: 0px;
+		top: 0px;
+		border: 1px solid #0;
+		background: #00FF00;
+		z-index: 10;
+	}
+	.topbar{
+		border-radius: 0px 0px 0 0;
+		padding: 5px;
+		text-align: left;
+		font-weight: bold;
+		color: #333333;
+		cursor: default;
+	}
+	.dash-dropdown{
+		cursor: default;
+	}
+	.grey{
+		background: #e7e7e7;
+	}
+	.content{
+		height: auto;
+		width: auto;
+	}
+	.colorgroup {
+
+width: 100%;
+   height: 28px;
+   overflow: hidden;
+   border: #FEFEFE 1px solid;
+-webkit-border-radius: 3px;
+border-radius: 3px;
+-webkit-box-shadow: inset 0px 0px 10px 1px #FEFEFE;
+box-shadow: inset 0px 0px 10px 1px #FEFEFE;
+   }
+.colorgroup select {
+
+   background: #EEEEEE;
+   width: 32.9%;
+   font-size:13pt;
+   color:grey;
+   border: 1;
+   border-radius: 0;
+   height: 28px;
+
+   }
+   .colorgroup select:focus {
+    outline: none;
+
+}
+	input {
+	  position: relative;
+	  top: 2px;
+		left: 2px;
+	}

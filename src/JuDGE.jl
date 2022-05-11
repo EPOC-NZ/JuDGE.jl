@@ -3,12 +3,15 @@ module JuDGE
 using Printf
 using Distributed
 using JuMP
+using PlotlyJS
+using Dash
 
 include("tree.jl")
 include("macros.jl")
 include("convergence.jl")
 include("risk.jl")
 include("deteq.jl")
+include("judge-dash.jl")
 
 mutable struct Bounds
     UB::Float64

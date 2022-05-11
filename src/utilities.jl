@@ -301,11 +301,15 @@ function solution_to_dictionary(jmodel::JuDGEModel; prefix::String = "")
                         strkey = replace(strkey, ", " => ",")
                         temp = strkey
                     else
-                        strkey = string(key.I)
-                        strkey = replace(strkey, ")" => "")
-                        strkey = replace(strkey, "(" => "")
-                        strkey = replace(strkey, "\"" => "")
-                        strkey = replace(strkey, ", " => ",")
+                        if length(key.I) == 1
+                            strkey = key.I[1]
+                        else
+                            strkey = string(key.I)
+                            strkey = replace(strkey, ")" => "")
+                            strkey = replace(strkey, "(" => "")
+                            strkey = replace(strkey, "\"" => "")
+                            strkey = replace(strkey, ", " => ",")
+                        end
                         temp = strkey
                     end
                     solution[node][sym][temp] = vals[key]
@@ -628,6 +632,49 @@ function get_active_columns(jmodel::JuDGEModel; inttol = 10^-7)
     end
 
     return active
+end
+
+function join_tuples(tuple1::Tuple, tuple2::Tuple)
+    result = Any[]
+
+    for i in 1:length(tuple1)
+        push!(result, tuple1[i])
+    end
+
+    for i in 1:length(tuple2)
+        push!(result, tuple2[i])
+    end
+
+    return Tuple(result)
+end
+
+function join_tuples(tuple1::NamedTuple, tuple2::NamedTuple)
+    result = Dict()
+
+    for i in keys(tuple1)
+        result[i] = tuple1[i]
+    end
+
+    for i in keys(tuple2)
+        if i in keys(result)
+            error("Merged named tuples cannot have the same keys")
+        end
+        result[i] = tuple2[i]
+    end
+
+    return NamedTuple(result)
+end
+
+function run_file(filename)
+    if Sys.iswindows()
+        run(`$(ENV["COMSPEC"]) /c start $(filename)`)
+    elseif Sys.isapple()
+        run(`open $(filename)`)
+    elseif Sys.islinux() || Sys.isbsd()
+        run(`xdg-open $(filename)`)
+    else
+        error("Unable to show plot. Try opening the file $(filename) manually.")
+    end
 end
 
 function overprint(str)
