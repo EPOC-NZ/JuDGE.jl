@@ -156,9 +156,11 @@ macro expansion(model, variable, args...)
     custom_penalty = false
     for el in args
         if Meta.isexpr(el, :(=))
-            push!(aakws, Pair(el.args...))
             if el.args[1] == :penalty
                 custom_penalty = true
+                push!(aakws, Pair(el.args[1], eval(el.args[2])))
+            else
+                push!(aakws, Pair(el.args...))
             end
         else
             push!(aargs, el)
@@ -208,9 +210,11 @@ macro shutdown(model, variable, args...)
     custom_penalty = false
     for el in args
         if Meta.isexpr(el, :(=))
-            push!(aakws, Pair(el.args...))
             if el.args[1] == :penalty
                 custom_penalty = true
+                push!(aakws, Pair(el.args[1], eval(el.args[2])))
+            else
+                push!(aakws, Pair(el.args...))
             end
         else
             push!(aargs, el)
@@ -264,9 +268,11 @@ macro enforced(model, variable, args...)
     custom_penalty = false
     for el in args
         if Meta.isexpr(el, :(=))
-            push!(aakws, Pair(el.args...))
             if el.args[1] == :penalty
                 custom_penalty = true
+                push!(aakws, Pair(el.args[1], eval(el.args[2])))
+            else
+                push!(aakws, Pair(el.args...))
             end
         else
             push!(aargs, el)

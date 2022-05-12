@@ -302,7 +302,7 @@ function solution_to_dictionary(jmodel::JuDGEModel; prefix::String = "")
                         temp = strkey
                     else
                         if length(key.I) == 1
-                            strkey = key.I[1]
+                            strkey = string(key.I[1])
                         else
                             strkey = string(key.I)
                             strkey = replace(strkey, ")" => "")

@@ -483,7 +483,7 @@ function drawTemplate(n) {
 		temp.innerText='Show node names';
 	element.appendChild(textName);
 	element.appendChild(temp);
-	
+
 	for (var i = 0; i<n; i++) {
 		var block = document.createElement("div");
 		block.className="colorgroup";
@@ -1005,6 +1005,7 @@ function load_jsonview(selected,div) {
 	if (selected==0) {
 		div.innerHTML="No node selected";
 		div.style.padding="10px";
+		div.parentElement.style.overflow="auto";
 		return;
 	}
 

@@ -334,8 +334,14 @@ function build_deteq(
                     key = densekey_to_tuple(index)
                     model.ext[:master_vars][node][name][key] =
                         JuDGE.copy_variable!(model, variables[index])
-                    model.ext[:master_names][node][name][key] =
-                        string(name) * "[" * string(index) * "]"
+                    if typeof(exps) <: JuMP.Containers.SparseAxisArray ||
+                       typeof(exps) <: JuMP.Containers.DenseAxisArray
+                        model.ext[:master_names][node][name][key] =
+                            string(name) * "[" * string(index.I) * "]"
+                    else
+                        model.ext[:master_names][node][name][key] =
+                            string(name) * "[" * string(index) * "]"
+                    end
                 end
             end
             if sp.ext[:options][name][5] != nothing
