@@ -18,7 +18,6 @@ var min_value = [0,0,0,0];
 var max_value = [1,1,1,1];
 var pan = [-1,-1];
 var selected_node;
-var svgns = "http://www.w3.org/2000/svg";
 var container;
 var zoomTree;
 var tree;
@@ -362,8 +361,8 @@ function gradscale(id,ct,_min,_max) {
 
 	var joined
 
-	var g_offset = document.getElementById("tree_content").childNodes[0].width.baseVal.value*0.6-16;
-	var g_width = document.getElementById("tree_content").childNodes[0].width.baseVal.value*0.4;
+	var g_offset = document.getElementById("tree-div").childNodes[0].width.baseVal.value*0.6-16;
+	var g_width = document.getElementById("tree-div").childNodes[0].width.baseVal.value*0.4;
 
 
 	if (reverse.checked) {
@@ -448,7 +447,7 @@ function drawTemplate(n) {
 	}
 	//document.getElementById("symbol").innerHTML = svg1.replace('content',temp).replace('"60"','"60"').replace('"60"','"60"');*/
 
-	var element = document.getElementById("settings_content");
+	var element = document.getElementById("settings-div");
 	element.innerHTML = '';
 
 	treestyle = document.createElement('input');
@@ -548,8 +547,8 @@ function drawTemplate(n) {
 function setup_positions(selected) {
 	selected_node=selected;
 	highlight=-1;
-	var tree_div=document.getElementById("tree_content");
-	var tree_frame=document.getElementById("tree_frame");
+	var tree_div=document.getElementById("tree-div");
+	var tree_frame=document.getElementById("tree-div_frame");
 
 	container = document.createElementNS(svgns, "svg");
 	container.setAttribute ("width", tree_frame.style.width);
@@ -566,6 +565,15 @@ function setup_positions(selected) {
 	else {
 		tree_div.appendChild(container);
 		tree_div.appendChild(document.getElementById("grad0"))
+
+		var label = document.createElement("div");
+		label.id = "label-div";
+		label.style.position = "absolute";
+		label.style.top="33px";
+		label.style.left="8px";
+		label.style.width="300px";
+		label.style.height="20px";
+		tree_frame.appendChild(label);
 	}
 
 	chooseTree();
@@ -936,7 +944,6 @@ function show_details(selected) {
 		width=parseFloat(temp.substr(0,temp.length-2));
 		nodes[highlight].circle.children[0].style.strokeWidth="0px";
 	}
-	send_message(selected.toString()+";"+document.getElementById("select_data0").value+";"+document.getElementById("select_key0").value,"default");
 
 	if(selected>=1) {
 		highlight=selected-1;
@@ -949,9 +956,17 @@ function show_details(selected) {
 		highlight=-1
 	}
 
+	if (selected!=0) {
+		document.getElementById("label-div").innerText="Node "+nodes[selected-1].label+" selected";
+	}
+	else {
+		document.getElementById("label-div").innerText="No node selected";
+	}
+	
 	if (typeof node_select === 'function') {
 		node_select(selected);
 	}
+
 	/*confirmCheckboxes();
 
 	}

@@ -2,6 +2,7 @@ using DelimitedFiles
 using JuMP
 using JuDGE
 using Dash
+using DashWrapper
 
 include("solvers/setup_gurobi.jl")
 
@@ -170,49 +171,52 @@ println("\nRe-solved Objective: " * string(resolve_subproblems(judy)))
 
 solution = JuDGE.solution_to_dictionary(judy)
 
+
 function simple_dash()
-    # Create the Dash app without any blocks or callbacks specified.
+    # Create the Dash app without any extra blocks or callbacks specified.
     # The path is the folder that the assets directory will be copied into.
-    return app =
-        JuDGE.create_dash(mytree, solution, nothing, nothing, path = @__DIR__)
+    blocks = JuDGE.dash_layout()
+    DashWrapper.scale_blocks!(blocks, 800, 1000, 16)
+
+    treedata = JuDGE.export_tree(mytree, data = solution)
+
+    return JuDGE.create_dash(
+        blocks,
+        nothing,
+        path = @__DIR__,
+        data = treedata,
+    )
 end
 
 function medium_dash()
-    blocks = [JuDGE.Block((1, 0), (0.5, 6), "Solution at Node")]
+    blocks = JuDGE.dash_layout()
+    push!(blocks, DashWrapper.Block((1, 0), (0.5, 6), "Solution at Node"))
+    DashWrapper.scale_blocks!(blocks, 1200, 1000, 16)
 
-    width = 1200
-    height = 1000
-    gap = 16
-
-    JuDGE.scale_blocks!(blocks, width, height, gap)
+    treedata = JuDGE.export_tree(mytree, data = solution)
 
     # Create the Dash app with the blocks defined above, but no callbacks.
     # The extra file has a javascript function that defines an action to
     # take when a node is selected in the scenario tree.
-    return app = JuDGE.create_dash(
-        mytree,
-        solution,
+    return JuDGE.create_dash(
         blocks,
         nothing,
         path = @__DIR__,
         extra_files = [joinpath(@__DIR__, "plot_functions", "medium.js")],
+        data = treedata,
     )
 end
 
 function advanced_dash()
     # Define the layout of the dashbaord.
-    blocks = [
-        JuDGE.Block((1, 0), (1.2, 3), "Transportation Capacity"),
-        JuDGE.Block((1, 3), (0.5, 3), "Supply Capacity"),
-        JuDGE.Block((1.5, 3), (0.7, 3), "Flow"),
-        JuDGE.Block((2.2, 0), (0.5, 6), "Solution at Node"),
-    ]
+    blocks = JuDGE.dash_layout()
+    push!(blocks, DashWrapper.Block((1, 0), (1.2, 3), "Transportation Capacity"))
+    push!(blocks, DashWrapper.Block((1, 3), (0.5, 3), "Supply Capacity"))
+    push!(blocks, DashWrapper.Block((1.5, 3), (0.7, 3), "Flow"))
+    push!(blocks, DashWrapper.Block((2.2, 0), (0.5, 6), "Solution at Node"))
+    DashWrapper.scale_blocks!(blocks, 1800, 800, 16)
 
-    width = 1800
-    height = 800
-    gap = 16
-
-    JuDGE.scale_blocks!(blocks, width, height, gap)
+    treedata = JuDGE.export_tree(mytree, data = solution)
 
     # Define functions to format the solution data for the plots.
     function capacity_data(node::AbstractTree, type::Symbol, solution::Dict)
@@ -269,33 +273,35 @@ function advanced_dash()
 
     # Define callback function that creates three plots.
     # These plots depend on the 'node' that is selected.
-    function cb_func(node, arg)
-        if node == nothing
+    function cb_func(arg)
+        if arg[1]==0
             return "", "", ""
+        else
+            node = collect(mytree)[arg[1]]
         end
         return dcc_graph(
             id = "example-graph-1",
             figure = (
                 data = [
-                    JuDGE.join_tuples(
+                    DashWrapper.join_tuples(
                         capacity_data(node, :existing, solution),
                         (type = "bar", name = "Existing Capacity"),
                     ),
-                    JuDGE.join_tuples(
+                    DashWrapper.join_tuples(
                         capacity_data(node, :built, solution),
                         (type = "bar", name = "Built Capacity"),
                     ),
-                    JuDGE.join_tuples(
+                    DashWrapper.join_tuples(
                         capacity_data(node, :justbuilt, solution),
                         (type = "bar", name = "New Capacity"),
                     ),
                 ],
-                layout = JuDGE.join_tuples(
+                layout = DashWrapper.join_tuples(
                     (
                         barmode = "stack",
                         margin = (l = 50, r = 50, b = 60, t = 25),
                     ),
-                    NamedTuple{(:width, :height)}(blocks[1].size),
+                    NamedTuple{(:width, :height)}(blocks[3].size),
                 ),
             ),
         ),
@@ -303,25 +309,25 @@ function advanced_dash()
             id = "example-graph-2",
             figure = (
                 data = [
-                    JuDGE.join_tuples(
+                    DashWrapper.join_tuples(
                         supply_data(node, :existing, solution),
                         (type = "bar", name = "Existing Supply"),
                     ),
-                    JuDGE.join_tuples(
+                    DashWrapper.join_tuples(
                         supply_data(node, :built, solution),
                         (type = "bar", name = "Built Supply"),
                     ),
-                    JuDGE.join_tuples(
+                    DashWrapper.join_tuples(
                         supply_data(node, :justbuilt, solution),
                         (type = "bar", name = "New Supply"),
                     ),
                 ],
-                layout = JuDGE.join_tuples(
+                layout = DashWrapper.join_tuples(
                     (
                         barmode = "stack",
                         margin = (l = 50, r = 50, b = 60, t = 25),
                     ),
-                    NamedTuple{(:width, :height)}(blocks[2].size),
+                    NamedTuple{(:width, :height)}(blocks[4].size),
                 ),
             ),
         ),
@@ -334,67 +340,71 @@ function advanced_dash()
                     type = "bar",
                     name = "Flow",
                 )],
-                layout = JuDGE.join_tuples(
+                layout = DashWrapper.join_tuples(
                     (
                         barmode = "stack",
                         margin = (l = 50, r = 60, b = 100, t = 25),
                     ),
-                    NamedTuple{(:width, :height)}(blocks[3].size),
+                    NamedTuple{(:width, :height)}(blocks[5].size),
                 ),
             ),
         )
     end
 
-    # Define the callback, "default" means that the callback will be called
-    # when a node is selected. [1,2,3] are the indices of the blocks that
-    # the three returned objects will be assigned to. The "" reflects that
-    # there is no custom javascript function that will be called when the
-    # callback finishes.
-    cb = JuDGE.DashCallback([1, 2, 3], cb_func, "", "default")
+    # Defining the callback "default" means that the callback will be called
+    # when a node is selected. ['block3','block4','block5'] are the names of
+    # the blocks that the three returned objects will be assigned to. There is
+    # no custom javascript function that will be called when the callback finishes.
+    cb = DashWrapper.DashCallback("default", ["block3", "block4", "block5"], cb_func)
 
     # Create the Dash app with the blocks defined above, but no callbacks.
     # The extra file has a javascript function that defines an action to
     # take when a node is selected in the scenario tree.
-    return app = JuDGE.create_dash(
-        mytree,
-        solution,
+    return JuDGE.create_dash(
         blocks,
         cb,
         path = @__DIR__,
         extra_files = [joinpath(@__DIR__, "plot_functions", "advanced.js")],
+        data = treedata,
     )
 end
 
 function callback_dash()
     # Define the layout of the dashbaord
-    blocks = [JuDGE.Block((1, 0), (0.5, 6), "Callback output")]
+    blocks = JuDGE.dash_layout()
+    push!(blocks, DashWrapper.Block((1, 0), (0.5, 6), "Callback output"))
+    DashWrapper.scale_blocks!(blocks, 1200, 1000, 16)
 
-    width = 1200
-    height = 1000
-    gap = 16
-
-    JuDGE.scale_blocks!(blocks, width, height, gap)
+    treedata = JuDGE.export_tree(mytree, data = solution)
 
     # A variable that will be modified by one callback and read by the
     # other.
-    public_data = false
+    public_data = nothing
 
     # This callback function is attached to the "default" action.
     # This means that it is triggered when the user selects a node.
     # The data returned from this callback is sent to the javascript
     # function js_cb1.
-    function cb_func1(node, arg)
-        println(node)
-        public_data = typeof(node) == Leaf
+    function cb_func1(arg)
+        if arg[1]==0
+            public_data=nothing
+            println("No node selected")
+        else
+            node = collect(mytree)[arg[1]]
+            public_data = typeof(node) == Leaf
+            println(node)
+        end
         return public_data
     end
 
     # This callback function is attached to "custom", and is triggered when
     # the javascript function 'send_message(...,"custom")' is called.
-    # The data returned from this callback is sent to the javascript
-    # function js_cb1.
+    # The color returned from this callback is sent to the javascript
+    # function js_cb2, and the arg is put into the block4 div.
     function cb_func2(arg)
-        if public_data
+        if public_data==nothing
+            color = "#000000"
+        elseif public_data==true
             color = "#DD2222"
         else
             color = "#2222DD"
@@ -404,19 +414,16 @@ function callback_dash()
 
     # These functions are in the plot_functions/cb.js file
     cbs = [
-        JuDGE.DashCallback([], cb_func1, "js_cb1", "default"),
-        JuDGE.DashCallback([1], cb_func2, "js_cb2", "custom"),
+        DashWrapper.DashCallback("default", "js_cb1", cb_func1),
+        DashWrapper.DashCallback("custom",["block3"], "js_cb2", cb_func2),
     ]
 
     # Create the Dash app with the blocks and callbacks specified.
-    # Include the cb.js file in the assets folder.
-    return app = JuDGE.create_dash(
-        mytree,
-        solution,
+    return JuDGE.create_dash(
         blocks,
         cbs,
-        path = @__DIR__,
         extra_files = [joinpath(@__DIR__, "plot_functions", "cb.js")],
+        data = treedata,
     )
 end
 
@@ -436,8 +443,11 @@ function run_dash(mode::Symbol)
     # Loads the dashboard in the browser, and then runs the server.
     # The first time this is run, the browser may need to be manually
     # refreshed.
-    JuDGE.load_dash()
-    return run_server(app, "0.0.0.0", debug = false)
+    DashWrapper.load_dash()
+    return DashWrapper.run_server(app, "0.0.0.0", debug = false)
 end
 
-run_dash(:medium)
+run_dash(:simple)
+# run_dash(:medium)
+# run_dash(:advanced)
+# run_dash(:callback)

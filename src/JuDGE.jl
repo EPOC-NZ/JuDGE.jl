@@ -5,13 +5,13 @@ using Distributed
 using JuMP
 using PlotlyJS
 using Dash
+using DashWrapper
 
 include("tree.jl")
 include("macros.jl")
 include("convergence.jl")
 include("risk.jl")
 include("deteq.jl")
-include("judge-dash.jl")
 
 mutable struct Bounds
     UB::Float64

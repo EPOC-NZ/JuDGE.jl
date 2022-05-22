@@ -634,35 +634,286 @@ function get_active_columns(jmodel::JuDGEModel; inttol = 10^-7)
     return active
 end
 
-function join_tuples(tuple1::Tuple, tuple2::Tuple)
-    result = Any[]
+function create_dash(
+    blocks::Union{Nothing,Vector{DashWrapper.Block}},
+    callbacks::Union{Nothing,DashWrapper.DashCallback,Vector{DashWrapper.DashCallback}};
+    path::String = pwd(),
+    title::String = "JuDGE Solution Dashboard",
+    data::Any = Dict(),
+    extra_files::Vector{String} = String[],
+    external_js::Vector{String} = String[],
+    external_css::Vector{String} = String[],
+)
+    extra_files = [[joinpath(dirname(@__DIR__), "dash", "tree.js"),
+       joinpath(dirname(@__DIR__), "dash", "judge-dash.js"),
+       joinpath(dirname(@__DIR__), "dash", "colors.js"),
+       joinpath(dirname(@__DIR__), "dash", "jsonview", "jsonview.bundle.css"),
+       joinpath(dirname(@__DIR__), "dash", "jsonview", "jsonview.bundle.js"),
+       joinpath(dirname(@__DIR__), "dash", "svg-pan-zoom","svg-pan-zoom.min.js")];extra_files]
 
-    for i in 1:length(tuple1)
-        push!(result, tuple1[i])
-    end
-
-    for i in 1:length(tuple2)
-        push!(result, tuple2[i])
-    end
-
-    return Tuple(result)
+   return app = DashWrapper.create_dash(
+       blocks,
+       callbacks,
+       path=path,
+       title=title,
+       data=data,
+       extra_files=extra_files,
+       external_js=external_js,
+       external_css=external_css,
+   )
 end
 
-function join_tuples(tuple1::NamedTuple, tuple2::NamedTuple)
-    result = Dict()
+function dash_layout()
+    blocks = DashWrapper.Block[]
+    push!(blocks, DashWrapper.Block((0, 0), (1, 5), "JuDGE Scenario Tree", div_name = "tree-div"))
+    push!(blocks, DashWrapper.Block((0, 5), (1, 1), "Settings", div_name = "settings-div"))
+    return blocks
+end
 
-    for i in keys(tuple1)
-        result[i] = tuple1[i]
-    end
+function export_tree(
+    some_tree::AbstractTree;
+    scale_edges = nothing,
+    scale_nodes::Float64 = 0.0,
+    max_size::Float64 = 50.0,
+    truncate::Int = -1,
+    rel_angle::Bool = false,
+    style::Symbol = :standard,
+    box_size::Int = 800,
+    skip_root::Bool = false,
+    data::Dict = Dict(),
+)
+    maxdata = Dict{Symbol,Any}()
+    mindata = Dict{Symbol,Any}()
+    scale_range = Dict{Symbol,Dict{Symbol,Any}}()
 
-    for i in keys(tuple2)
-        if i in keys(result)
-            error("Merged named tuples cannot have the same keys")
+    function data_scale(node)
+        #        if data_from_original
+        #            node = getID(node)
+        #        end
+        if skip_root && node.parent == nothing
+            return
         end
-        result[i] = tuple2[i]
+        for sym in keys(data[node])
+            if typeof(data[node][sym]) == Float64
+                if !haskey(scale_range, sym)
+                    scale_range[sym] = Dict{Symbol,Any}()
+                    scale_range[sym][:min] = data[node][sym]
+                    scale_range[sym][:max] = data[node][sym]
+                else
+                    if data[node][sym] < scale_range[sym][:min]
+                        scale_range[sym][:min] = data[node][sym]
+                    elseif data[node][sym] > scale_range[sym][:max]
+                        scale_range[sym][:max] = data[node][sym]
+                    end
+                end
+            elseif typeof(data[node][sym]) <: Dict
+                for key in keys(data[node][sym])
+                    if !haskey(scale_range, sym)
+                        scale_range[sym] = Dict{Symbol,Any}()
+                        scale_range[sym][:max] = data[node][sym][key]
+                        scale_range[sym][:min] = data[node][sym][key]
+                    else
+                        if data[node][sym][key] < scale_range[sym][:min]
+                            scale_range[sym][:min] = data[node][sym][key]
+                        elseif data[node][sym][key] > scale_range[sym][:max]
+                            scale_range[sym][:max] = data[node][sym][key]
+                        end
+                    end
+                end
+            elseif typeof(data[node][sym]) <: Array
+                for val in data[node][sym]
+                    if !haskey(scale_range, sym)
+                        scale_range[sym] = Dict{Symbol,Any}()
+                        scale_range[sym][:max] = val
+                        scale_range[sym][:min] = val
+                    else
+                        if val < scale_range[sym][:min]
+                            scale_range[sym][:min] = val
+                        elseif val > scale_range[sym][:max]
+                            scale_range[sym][:max] = val
+                        end
+                    end
+                end
+            end
+        end
     end
 
-    return NamedTuple(result)
+    function arc_json(node, parent)
+        return Dict("from" => get_id[parent] + 1, "to" => get_id[node] + 1)
+    end
+
+    get_id = Dict{AbstractTree,Int}()
+
+    angles = Dict{AbstractTree,Float64}()
+    position = Dict{AbstractTree,Tuple{Float64,Float64}}()
+    position2 = Dict{AbstractTree,Tuple{Float64,Float64}}()
+
+    function setpositions(
+        node::AbstractTree,
+        rel_angle::Bool,
+        l::Float64,
+        scale::Float64,
+        odd::Bool,
+    )
+        if typeof(node) == Leaf
+            return
+        end
+        a = -2 * pi / (length(node.children))
+        current = 0.0
+        if rel_angle
+            current = angles[node] + pi + a / 2#0.0
+        elseif (length(node.children) % 2) == 1
+            current +=
+                pi / 2 +
+                (length(node.children) - 1) * pi / length(node.children)
+        elseif odd
+            current += 3 * pi / 2 - pi / length(node.children)
+        else
+            current += 3 * pi / 2 - 2 * pi / length(node.children)
+        end
+
+        for child in node.children
+            angles[child] = current
+            position[child] = (
+                position[node][1] + l * cos(current),
+                position[node][2] - l * sin(current),
+            )
+            if length(node.children) == 2
+                if odd
+                    setpositions(child, rel_angle, l, scale, !odd)
+                else
+                    setpositions(child, rel_angle, l * scale^2, scale, !odd)
+                end
+            else
+                setpositions(child, rel_angle, l * scale, scale, !odd)
+            end
+            current += a
+        end
+    end
+
+    function setpositions2(node::AbstractTree, leaf_sep::Float64)
+        function locate(node::AbstractTree, vert::Float64, horz::Float64)
+            if typeof(node) == Leaf ||
+               (truncate != -1 && JuDGE.depth(node) >= truncate)
+                vert += leaf_sep
+                position2[node] = (horz, vert)
+                return (vert, vert)
+            else
+                verts = Float64[]
+                for child in node.children
+                    pos, vert = locate(child, vert, horz + parch_sep)
+                    push!(verts, pos)
+                end
+                position2[node] = (horz, sum(verts) / length(verts))
+                return (position2[node][2], vert)
+            end
+        end
+        num_leaf = length(JuDGE.get_leafnodes(node, truncate = truncate))
+        max_depth = JuDGE.depth(collect(node, truncate = truncate)[end])
+        parch_sep = 0.8 * leaf_sep * num_leaf / max_depth
+        return locate(node, 0.0, 0.0)
+    end
+
+    scale_factors = [
+        [1.0],
+        [1.0, 0.87, 0.83, 0.78, 0.74, 0.71, 0.695, 0.685],
+        [1.0, 0.65, 0.52, 0.48],
+        [1.0, 0.45, 0.42, 0.42, 0.41, 0.4],
+        [1.0, 0.44, 0.37, 0.36],
+        [1.0, 0.42, 0.34, 0.33],
+        [1.0, 0.35, 0.3],
+        [1.0, 0.3, 0.26],
+        [1.0, 0.27, 0.23],
+        [1.0, 0.24, 0.22],
+    ]
+
+    if scale_edges == nothing
+        if typeof(some_tree) == Leaf
+            scale_edges = 1.0
+        else
+            dg = length(some_tree.children)
+            if dg <= 10
+                dp = min(
+                    JuDGE.depth(collect(some_tree, truncate = truncate)[end]),
+                    length(scale_factors[dg]),
+                )
+                scale_edges = scale_factors[dg][dp]
+            else
+                dp = JuDGE.depth(collect(some_tree, truncate = truncate)[end])
+                scale_edges = 0.22 * 0.98^(dg^dp - 11)
+            end
+        end
+    end
+
+    angles[some_tree] = rel_angle ? 0.0 : -pi / 2
+    position[some_tree] = (0.0, 0.0)
+
+    setpositions(some_tree, rel_angle, 700.0, scale_edges, true)
+    setpositions2(some_tree, 70.0)
+    index = 0
+    if skip_root
+        index -= 1
+    end
+
+    arcs = Dict[]
+    nodes = Dict[]
+
+    for node in collect(some_tree, truncate = truncate)
+        get_id[node] = index
+        parent = node.parent
+        if parent != nothing && (!skip_root || parent.parent != nothing)
+            push!(arcs, arc_json(node, parent))
+        end
+        index += 1
+    end
+
+    for node in collect(some_tree, truncate = truncate)
+        if !skip_root || node != some_tree
+            data_scale(node)
+            temp = Dict{Symbol,Any}()
+            temp[:id] = get_id[node] + 1
+            temp[:label] = node.name
+            temp[:level] = JuDGE.depth(node)
+            temp[:leaf] =
+                typeof(node) == Leaf ||
+                (truncate != -1 && JuDGE.depth(node) >= truncate)
+            temp[:posX] = position[node][1]
+            temp[:posY] = position[node][2]
+            temp[:posX2] = position2[node][1]
+            temp[:posY2] = position2[node][2]
+            if haskey(data, node)
+                temp[:data] = data[node]
+            end
+            push!(nodes, temp)
+        end
+    end
+
+    if scale_nodes == 0.0
+        scale_nodes = min(
+            1.0,
+            exp(
+                log(
+                    (
+                        400 *
+                        scale_edges^JuDGE.depth(
+                            collect(some_tree, truncate = truncate)[end],
+                        )
+                    ) / max_size,
+                ) /
+                JuDGE.depth(collect(some_tree, truncate = truncate)[end]),
+            ),
+        )
+    end
+    min_size = 25
+
+    return Dict(
+        "nodes" => nodes,
+        "arcs" => arcs,
+        "node_scale" => scale_nodes,
+        "min_size" => min_size,
+        "max_size" => max_size,
+        "scale" => scale_range,
+    )
 end
 
 function run_file(filename)
