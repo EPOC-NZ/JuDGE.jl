@@ -2,7 +2,7 @@ using DelimitedFiles
 using JuMP
 using JuDGE
 using Dash
-using DashWrapper
+using DashWrapper #(] add https://github.com/adow031/DashWrapper.git)
 
 include("solvers/setup_gurobi.jl")
 
