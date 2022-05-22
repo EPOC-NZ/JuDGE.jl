@@ -636,7 +636,11 @@ end
 
 function create_dash(
     blocks::Union{Nothing,Vector{DashWrapper.Block}},
-    callbacks::Union{Nothing,DashWrapper.DashCallback,Vector{DashWrapper.DashCallback}};
+    callbacks::Union{
+        Nothing,
+        DashWrapper.DashCallback,
+        Vector{DashWrapper.DashCallback},
+    };
     path::String = pwd(),
     title::String = "JuDGE Solution Dashboard",
     data::Any = Dict(),
@@ -644,29 +648,65 @@ function create_dash(
     external_js::Vector{String} = String[],
     external_css::Vector{String} = String[],
 )
-    extra_files = [[joinpath(dirname(@__DIR__), "dash", "tree.js"),
-       joinpath(dirname(@__DIR__), "dash", "judge-dash.js"),
-       joinpath(dirname(@__DIR__), "dash", "colors.js"),
-       joinpath(dirname(@__DIR__), "dash", "jsonview", "jsonview.bundle.css"),
-       joinpath(dirname(@__DIR__), "dash", "jsonview", "jsonview.bundle.js"),
-       joinpath(dirname(@__DIR__), "dash", "svg-pan-zoom","svg-pan-zoom.min.js")];extra_files]
+    extra_files = [
+        [
+            joinpath(dirname(@__DIR__), "dash", "tree.js"),
+            joinpath(dirname(@__DIR__), "dash", "judge-dash.js"),
+            joinpath(dirname(@__DIR__), "dash", "colors.js"),
+            joinpath(
+                dirname(@__DIR__),
+                "dash",
+                "jsonview",
+                "jsonview.bundle.css",
+            ),
+            joinpath(
+                dirname(@__DIR__),
+                "dash",
+                "jsonview",
+                "jsonview.bundle.js",
+            ),
+            joinpath(
+                dirname(@__DIR__),
+                "dash",
+                "svg-pan-zoom",
+                "svg-pan-zoom.min.js",
+            ),
+        ]
+        extra_files
+    ]
 
-   return app = DashWrapper.create_dash(
-       blocks,
-       callbacks,
-       path=path,
-       title=title,
-       data=data,
-       extra_files=extra_files,
-       external_js=external_js,
-       external_css=external_css,
-   )
+    return app = DashWrapper.create_dash(
+        blocks,
+        callbacks,
+        path = path,
+        title = title,
+        data = data,
+        extra_files = extra_files,
+        external_js = external_js,
+        external_css = external_css,
+    )
 end
 
 function dash_layout()
     blocks = DashWrapper.Block[]
-    push!(blocks, DashWrapper.Block((0, 0), (1, 5), "JuDGE Scenario Tree", div_name = "tree-div"))
-    push!(blocks, DashWrapper.Block((0, 5), (1, 1), "Settings", div_name = "settings-div"))
+    push!(
+        blocks,
+        DashWrapper.Block(
+            (0, 0),
+            (1, 5),
+            "JuDGE Scenario Tree",
+            div_name = "tree-div",
+        ),
+    )
+    push!(
+        blocks,
+        DashWrapper.Block(
+            (0, 5),
+            (1, 1),
+            "Settings",
+            div_name = "settings-div",
+        ),
+    )
     return blocks
 end
 

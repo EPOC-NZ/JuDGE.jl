@@ -171,7 +171,6 @@ println("\nRe-solved Objective: " * string(resolve_subproblems(judy)))
 
 solution = JuDGE.solution_to_dictionary(judy)
 
-
 function simple_dash()
     # Create the Dash app without any extra blocks or callbacks specified.
     # The path is the folder that the assets directory will be copied into.
@@ -180,12 +179,7 @@ function simple_dash()
 
     treedata = JuDGE.export_tree(mytree, data = solution)
 
-    return JuDGE.create_dash(
-        blocks,
-        nothing,
-        path = @__DIR__,
-        data = treedata,
-    )
+    return JuDGE.create_dash(blocks, nothing, path = @__DIR__, data = treedata)
 end
 
 function medium_dash()
@@ -210,7 +204,10 @@ end
 function advanced_dash()
     # Define the layout of the dashbaord.
     blocks = JuDGE.dash_layout()
-    push!(blocks, DashWrapper.Block((1, 0), (1.2, 3), "Transportation Capacity"))
+    push!(
+        blocks,
+        DashWrapper.Block((1, 0), (1.2, 3), "Transportation Capacity"),
+    )
     push!(blocks, DashWrapper.Block((1, 3), (0.5, 3), "Supply Capacity"))
     push!(blocks, DashWrapper.Block((1.5, 3), (0.7, 3), "Flow"))
     push!(blocks, DashWrapper.Block((2.2, 0), (0.5, 6), "Solution at Node"))
@@ -274,7 +271,7 @@ function advanced_dash()
     # Define callback function that creates three plots.
     # These plots depend on the 'node' that is selected.
     function cb_func(arg)
-        if arg[1]==0
+        if arg[1] == 0
             return "", "", ""
         else
             node = collect(mytree)[arg[1]]
@@ -355,7 +352,11 @@ function advanced_dash()
     # when a node is selected. ['block3','block4','block5'] are the names of
     # the blocks that the three returned objects will be assigned to. There is
     # no custom javascript function that will be called when the callback finishes.
-    cb = DashWrapper.DashCallback("default", ["block3", "block4", "block5"], cb_func)
+    cb = DashWrapper.DashCallback(
+        "default",
+        ["block3", "block4", "block5"],
+        cb_func,
+    )
 
     # Create the Dash app with the blocks defined above, but no callbacks.
     # The extra file has a javascript function that defines an action to
@@ -386,8 +387,8 @@ function callback_dash()
     # The data returned from this callback is sent to the javascript
     # function js_cb1.
     function cb_func1(arg)
-        if arg[1]==0
-            public_data=nothing
+        if arg[1] == 0
+            public_data = nothing
             println("No node selected")
         else
             node = collect(mytree)[arg[1]]
@@ -402,9 +403,9 @@ function callback_dash()
     # The color returned from this callback is sent to the javascript
     # function js_cb2, and the arg is put into the block4 div.
     function cb_func2(arg)
-        if public_data==nothing
+        if public_data == nothing
             color = "#000000"
-        elseif public_data==true
+        elseif public_data == true
             color = "#DD2222"
         else
             color = "#2222DD"
@@ -415,7 +416,7 @@ function callback_dash()
     # These functions are in the plot_functions/cb.js file
     cbs = [
         DashWrapper.DashCallback("default", "js_cb1", cb_func1),
-        DashWrapper.DashCallback("custom",["block3"], "js_cb2", cb_func2),
+        DashWrapper.DashCallback("custom", ["block3"], "js_cb2", cb_func2),
     ]
 
     # Create the Dash app with the blocks and callbacks specified.
