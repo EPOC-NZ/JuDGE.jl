@@ -444,7 +444,7 @@ function run_dash(mode::Symbol)
     # Loads the dashboard in the browser, and then runs the server.
     # The first time this is run, the browser may need to be manually
     # refreshed.
-    DashWrapper.load_dash()
+    DashWrapper.load_dash(app)
     return DashWrapper.run_server(app, "0.0.0.0", debug = false)
 end
 
