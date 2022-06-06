@@ -3,9 +3,6 @@ module JuDGE
 using Printf
 using Distributed
 using JuMP
-using PlotlyJS
-using Dash
-using DashWrapper
 
 include("tree.jl")
 include("macros.jl")
@@ -873,17 +870,28 @@ function fractionalcount(jmodel::JuDGEModel, inttol::Float64)
         for x in keys(jmodel.master_problem.ext[:expansions][node])
             if jmodel.sub_problems[jmodel.tree].ext[:options][x][4] != :Con
                 var = jmodel.master_problem.ext[:expansions][node][x]
+                slacks = jmodel.master_problem.ext[:cover_slacks][node][x]
                 if typeof(var) <: AbstractArray
                     for key in eachindex(var)
                         val = JuMP.value(var[key])
                         count +=
                             min(val - floor(val), ceil(val) - val) > inttol ?
                             1 : 0
+                        for v in keys(slacks[key])
+                            val = JuMP.value(slacks[key][v])
+                            count += min(val - floor(val), ceil(val) - val) > inttol ?
+                                1 : 0
+                        end
                     end
                 else
                     val = JuMP.value(var)
                     count +=
                         min(val - floor(val), ceil(val) - val) > inttol ? 1 : 0
+                    for v in keys(slacks)
+                        val = JuMP.value(slacks[v])
+                        count += min(val - floor(val), ceil(val) - val) > inttol ?
+                            1 : 0
+                    end
                 end
             end
         end
@@ -1055,6 +1063,13 @@ function fix_expansions(jmodel::JuDGEModel, force_match::Bool)
                     if haskey(slacks[i], 2)
                         value += JuMP.value(slacks[i][2])
                     end
+                    #
+                    # if sp.ext[:options][name][8][2] == 0
+                    #     value=floor(value)
+                    # elseif sp.ext[:options][name][8][1] == 0
+                    #     value=ceil(value)
+                    # end
+
                     JuMP.fix(var2[i], value, force = true)
                     # if sp.ext[:options][name][8][2] == 0
                     #     if force_match
@@ -1108,6 +1123,12 @@ function fix_expansions(jmodel::JuDGEModel, force_match::Bool)
                 if haskey(slacks, 2)
                     value += JuMP.value(slacks[2])
                 end
+                #
+                # if sp.ext[:options][name][8][2] == 0
+                #     value=floor(value)
+                # elseif sp.ext[:options][name][8][1] == 0
+                #     value=ceil(value)
+                # end
 
                 JuMP.fix(var2, value, force = true)
 

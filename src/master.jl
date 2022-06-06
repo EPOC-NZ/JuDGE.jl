@@ -543,29 +543,56 @@ function solve_binary(
 
         for x in keys(judge.master_problem.ext[:expansions][node])
             var = judge.master_problem.ext[:expansions][node][x]
+            slacks = judge.master_problem.ext[:cover_slacks][node][x]
             if judge.sub_problems[judge.tree].ext[:options][x][4] == :Bin
                 if typeof(var) <: JuMP.Containers.SparseAxisArray
                     for key in keys(var.data)
                         set_binary(var.data[key])
                     end
+                    for key in keys(slacks)
+                        for k in keys(slacks.data[key])
+                            set_binary(slacks.data[key][k])
+                        end
+                    end
                 elseif typeof(var) <: AbstractArray
                     for key in keys(var)
                         set_binary(var[key])
                     end
+                    for key in keys(slacks)
+                        for k in keys(slacks[key])
+                            set_binary(slacks[key][k])
+                        end
+                    end
                 else
                     set_binary(var)
+                    for k in keys(slacks)
+                        set_binary(slacks[k])
+                    end
                 end
             elseif judge.sub_problems[judge.tree].ext[:options][x][4] == :Int
                 if typeof(var) <: JuMP.Containers.SparseAxisArray
                     for key in keys(var.data)
                         set_integer(var.data[key])
                     end
+                    for key in keys(slacks)
+                        for k in keys(slacks.data[key])
+                            set_integer(slacks.data[key][k])
+                        end
+                    end
                 elseif typeof(var) <: AbstractArray
                     for key in keys(var)
                         set_integer(var[key])
                     end
+                    for key in keys(slacks)
+                        for k in keys(slacks[key])
+                            set_integer(slacks[key][k])
+                        end
+                    end
                 else
                     set_integer(var)
+                    for k in keys(slacks)
+                        set_integer(slacks[k])
+                    end
                 end
             end
         end
@@ -621,21 +648,38 @@ function remove_binary(judge::JuDGEModel)
         end
         for x in keys(judge.master_problem.ext[:expansions][node])
             var = judge.master_problem.ext[:expansions][node][x]
+            slacks = judge.master_problem.ext[:cover_slacks][node][x]
             if judge.sub_problems[judge.tree].ext[:options][x][4] == :Bin
                 if typeof(var) <: AbstractArray
                     for key in eachindex(var)
                         unset_binary(var[key])
                     end
+                    for key in keys(slacks)
+                        for k in keys(slacks[key])
+                            unset_binary(slacks[key][k])
+                        end
+                    end
                 else
                     unset_binary(var)
+                    for k in keys(slacks)
+                        unset_binary(slacks[k])
+                    end
                 end
             elseif judge.sub_problems[judge.tree].ext[:options][x][4] == :Int
                 if typeof(var) <: AbstractArray
                     for key in eachindex(var)
                         unset_integer(var[key])
                     end
+                    for key in keys(slacks)
+                        for k in keys(slacks[key])
+                            unset_integer(slacks[key][k])
+                        end
+                    end
                 else
                     unset_integer(var)
+                    for k in keys(slacks)
+                        unset_integer(slacks[k])
+                    end
                 end
             end
         end
