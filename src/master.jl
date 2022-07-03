@@ -325,14 +325,13 @@ function build_master(
             df = discount_factor^depth(node)
             for (name, variable) in sp.ext[:expansions]
                 interval =
-                    max(
-                        1,
-                        n - sp.ext[:options][name][3] -
-                        sp.ext[:options][name][2] + 1,
-                    ):n-sp.ext[:options][name][2]
+                    (1+sp.ext[:options][name][2]):min(
+                        n,
+                        sp.ext[:options][name][2] + sp.ext[:options][name][3],
+                    )
                 disc = Dict{Int,Float64}()
                 for i in interval
-                    disc[i] = df / discount_factor^(i - 1)
+                    disc[i] = df * discount_factor^(i - 1)
                 end
                 slacks = model.ext[:cover_slacks][node][name]
                 if typeof(variable) <: AbstractArray
@@ -343,6 +342,8 @@ function build_master(
                             cost_coef +=
                                 disc[j] *
                                 coef(sp.ext[:ongoingcosts], variable[i])
+                            # if the ongoingcosts change dynamically one may wish to use: (future = reverse(nodes[1:n]))
+                            # coef(sub_problems[future[j]].ext[:ongoingcosts], sub_problems[future[j]].ext[:expansions][name][i])
                         end
                         set_normalized_coefficient(
                             model.ext[:scenprofit_con][leaf],

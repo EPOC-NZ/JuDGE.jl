@@ -59,6 +59,7 @@ function DetEqModel(
     risk::Union{Risk,Vector{Risk}} = RiskNeutral(),
     sideconstraints = nothing,
     check = true,
+    perfect_foresight = false,
 )
     println("")
     println(
@@ -87,18 +88,44 @@ function DetEqModel(
     if typeof(sub_problem_builder) <: Function
         JuDGE.scale_objectives(tree, sub_problems, discount_factor)
     end
-    print("Building deterministic equivalent problem...")
-    problem = build_deteq(
-        sub_problems,
-        tree,
-        probabilities,
-        solver,
-        discount_factor,
-        risk,
-        sideconstraints,
-    )
-    println("Complete")
-    return DetEqModel(problem, tree, probabilities, risk)
+
+    if !perfect_foresight
+        print("Building deterministic equivalent problem...")
+        problem = build_deteq(
+            sub_problems,
+            tree,
+            probabilities,
+            solver,
+            discount_factor,
+            risk,
+            sideconstraints,
+        )
+        println("Complete")
+        return DetEqModel(problem, tree, probabilities, risk)
+    else
+        scenarios = Dict{AbstractTree,DetEqModel}()
+        pr = Dict{AbstractTree,Float64}()
+        @info "Building deterministic equivalent problems"
+        scen_trees = get_scenarios(tree)
+        for t in scen_trees
+            leaf = getID(get_leafnodes(t)[1])
+            sps = Dict(i => sub_problems[getID(i)] for i in collect(t))
+            probs = Dict(i => 1.0 for i in collect(t))
+            problem = build_deteq(
+                sps,
+                t,
+                probs,
+                solver,
+                discount_factor,
+                risk,
+                sideconstraints,
+            )
+            scenarios[leaf] = DetEqModel(problem, t, probs, risk)
+            pr[leaf] = probabilities[leaf]
+        end
+        @info "Deterministic equivalent problems built"
+        return scenarios, pr
+    end
 end
 
 function build_deteq(

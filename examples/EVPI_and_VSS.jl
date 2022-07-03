@@ -264,5 +264,5 @@ function evpi_vss(
 end
 
 if !isdefined(@__MODULE__, :running_tests) || !running_tests
-    evpi_vss(389335, 20, true, 0.001)
+    evpi_vss(1, 20, true, 0.001)
 end

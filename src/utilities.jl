@@ -433,7 +433,11 @@ function solution_to_dictionary(deteq::DetEqModel; prefix::String = "")
                         solution[node][Symbol(prefix * ss[1])] =
                             Dict{String,Float64}()
                     end
-                    solution[node][Symbol(prefix * ss[1])][ss[2][1:end-1]] =
+                    strkey = ss[2][1:end-1]
+                    strkey = replace(strkey, ")" => "")
+                    strkey = replace(strkey, "(" => "")
+                    strkey = replace(strkey, ", " => ",")
+                    solution[node][Symbol(prefix * ss[1])][strkey] =
                         JuMP.value(var[i])
                 end
             end
@@ -479,6 +483,9 @@ function set_starting_solution!(deteq::DetEqModel, jmodel::JuDGEModel)
             for index in
                 keys(jmodel.master_problem.ext[:expansions][node][name])
                 key = JuDGE.densekey_to_tuple(index)
+                # @constraint(deteq.problem,deteq.problem.ext[:master_vars][node][name][key]==
+                #     JuMP.value(jmodel.master_problem.ext[:expansions][node][name][index])
+                # )
                 set_start_value(
                     deteq.problem.ext[:master_vars][node][name][key],
                     JuMP.value(
@@ -495,6 +502,7 @@ function set_starting_solution!(deteq::DetEqModel, jmodel::JuDGEModel)
             temp[string(variable)] = variable
         end
         for variable in keys(deteq.problem.ext[:vars][node])
+            # @constraint(deteq.problem,deteq.problem.ext[:vars][node][variable]==JuMP.value(temp[string(variable)]))
             set_start_value(
                 deteq.problem.ext[:vars][node][variable],
                 JuMP.value(temp[string(variable)]),

@@ -333,9 +333,31 @@ function write_solution_to_file(
 )
     file = open(filename, "w")
 
-    println(file, "node,value,variable,indices")
+    print(file, "node,value,variable")
 
     solution = solution_to_dictionary(model)
+
+    max_indices = 0
+    for node in keys(solution)
+        for (name, item) in solution[node]
+            if typeof(item) != Float64
+                for (index, value) in item
+                    n = length(split(index, ","))
+                    if n > max_indices
+                        max_indices = n
+                    end
+                    break
+                end
+            end
+        end
+    end
+
+    if max_indices > 0
+        for i in 1:max_indices
+            print(file, ",i$(i)")
+        end
+    end
+    println(file, "")
 
     for node in keys(solution)
         for (name, item) in solution[node]
@@ -363,3 +385,5 @@ function write_solution_to_file(
 
     return close(file)
 end
+
+""

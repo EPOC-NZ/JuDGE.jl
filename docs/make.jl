@@ -2,7 +2,7 @@ using Documenter, JuDGE
 
 makedocs(
     sitename = "JuDGE.jl: Julia Decomposition for Generalized Expansion",
-    modules = [JuDGE],
+    #modules = [JuDGE],
     clean = true,
     format = Documenter.HTML(prettyurls = get(ENV, "CI", nothing) == "true"),
     pages = [

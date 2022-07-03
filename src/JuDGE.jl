@@ -1,7 +1,6 @@
 module JuDGE
 
 using Printf
-using Distributed
 using JuMP
 
 include("tree.jl")
@@ -879,8 +878,9 @@ function fractionalcount(jmodel::JuDGEModel, inttol::Float64)
                             1 : 0
                         for v in keys(slacks[key])
                             val = JuMP.value(slacks[key][v])
-                            count += min(val - floor(val), ceil(val) - val) > inttol ?
-                                1 : 0
+                            count +=
+                                min(val - floor(val), ceil(val) - val) >
+                                inttol ? 1 : 0
                         end
                     end
                 else
@@ -889,7 +889,8 @@ function fractionalcount(jmodel::JuDGEModel, inttol::Float64)
                         min(val - floor(val), ceil(val) - val) > inttol ? 1 : 0
                     for v in keys(slacks)
                         val = JuMP.value(slacks[v])
-                        count += min(val - floor(val), ceil(val) - val) > inttol ?
+                        count +=
+                            min(val - floor(val), ceil(val) - val) > inttol ?
                             1 : 0
                     end
                 end
@@ -968,12 +969,17 @@ function updateduals(master, sub_problem, node, status, iter)
             oc = 10^14
         end
         for (name, var) in sub_problem.ext[:expansions]
+            if sub_problem.ext[:options][name][8][1] == Inf
+                flip = -1
+            else
+                flip = 1
+            end
             if typeof(var) <: AbstractArray
                 for i in eachindex(var)
-                    set_objective_coefficient(sub_problem, var[i], oc)
+                    set_objective_coefficient(sub_problem, var[i], flip * oc)
                 end
             else
-                set_objective_coefficient(sub_problem, var, oc)
+                set_objective_coefficient(sub_problem, var, flip * oc)
             end
         end
         set_objective_coefficient(sub_problem, sub_problem.ext[:objective], 1.0)
@@ -1063,12 +1069,16 @@ function fix_expansions(jmodel::JuDGEModel, force_match::Bool)
                     if haskey(slacks[i], 2)
                         value += JuMP.value(slacks[i][2])
                     end
-                    #
-                    # if sp.ext[:options][name][8][2] == 0
-                    #     value=floor(value)
-                    # elseif sp.ext[:options][name][8][1] == 0
-                    #     value=ceil(value)
-                    # end
+
+                    if sp.ext[:options][name][4] ∈ [:Bin, :Int]
+                        # if sp.ext[:options][name][8][2] == 0
+                        #     value=floor(value)
+                        # elseif sp.ext[:options][name][8][1] == 0
+                        #     value=ceil(value)
+                        # else
+                        value = round(value)
+                        # end
+                    end
 
                     JuMP.fix(var2[i], value, force = true)
                     # if sp.ext[:options][name][8][2] == 0
@@ -1123,12 +1133,12 @@ function fix_expansions(jmodel::JuDGEModel, force_match::Bool)
                 if haskey(slacks, 2)
                     value += JuMP.value(slacks[2])
                 end
-                #
-                # if sp.ext[:options][name][8][2] == 0
-                #     value=floor(value)
-                # elseif sp.ext[:options][name][8][1] == 0
-                #     value=ceil(value)
-                # end
+
+                if sp.ext[:options][name][8][2] == 0
+                    value = floor(value)
+                elseif sp.ext[:options][name][8][1] == 0
+                    value = ceil(value)
+                end
 
                 JuMP.fix(var2, value, force = true)
 
@@ -1148,6 +1158,31 @@ function fix_expansions(jmodel::JuDGEModel, force_match::Bool)
                 #     JuMP.fix(var2, value, force = true)
                 # end
                 set_objective_coefficient(sp, var2, 0.0)
+            end
+        end
+    end
+    return nothing
+end
+
+function unfix_expansions(jmodel::JuDGEModel)
+    if termination_status(jmodel.master_problem) != MOI.OPTIMAL &&
+       termination_status(jmodel.master_problem) != MOI.INTERRUPTED &&
+       termination_status(jmodel.master_problem) != MOI.LOCALLY_SOLVED &&
+       termination_status(jmodel.master_problem) != MOI.INTERRUPTED
+        error("You need to first solve the decomposed model.")
+    end
+
+    for node in collect(jmodel.tree)
+        sp = jmodel.sub_problems[node]
+        for (name, var) in jmodel.master_problem.ext[:expansions][node]
+            var2 = sp.ext[:expansions][name]
+            slacks = jmodel.master_problem.ext[:cover_slacks][node][name]
+            if typeof(var) <: AbstractArray
+                for i in eachindex(var)
+                    JuMP.unfix(var2[i])
+                end
+            elseif isa(var, VariableRef)
+                JuMP.unfix(var2)
             end
         end
     end
@@ -1182,7 +1217,7 @@ function set_policy!(
         name,
         node::AbstractTree,
         options,
-        i::Int,
+        i::Union{Int,CartesianIndex},
         rounded::Bool,
     )
         if rounded
@@ -1198,7 +1233,11 @@ function set_policy!(
                 val2 = JuMP.value(var2[i])
             end
         end
-        JuMP.fix(var[i], val2, force = true)
+        if i == 0
+            JuMP.fix(var, val2, force = true)
+        else
+            JuMP.fix(var[i], val2, force = true)
+        end
         val = 0.0
         if options[1] == :cumulative
             for n in hist
@@ -1224,88 +1263,56 @@ function set_policy!(
             if node.parent != nothing
                 if haskey(mapping, node) && haskey(mapping, node.parent)
                     v =
-                        jmodel2.master_problem.ext[:expansions][mapping[node]][name]
+                        i == 0 ?
+                        jmodel2.master_problem.ext[:expansions][mapping[node]][name] :
+                        jmodel2.master_problem.ext[:expansions][mapping[node]][name][i]
                     v2 =
-                        jmodel2.master_problem.ext[:expansions][mapping[node.parent]][name]
+                        i == 0 ?
+                        jmodel2.master_problem.ext[:expansions][mapping[node.parent]][name] :
+                        jmodel2.master_problem.ext[:expansions][mapping[node.parent]][name][i]
                     if rounded
-                        if i == 0
-                            val = round(JuMP.value(v) - JuMP.value(v2))
-                        else
-                            val = round(JuMP.value(v[i]) - JuMP.value(v2[i]))
-                        end
+                        val = round(JuMP.value(v) - JuMP.value(v2))
                     else
-                        if i == 0
-                            val = JuMP.value(v) - JuMP.value(v2)
-                        else
-                            val = JuMP.value(v[i]) - JuMP.value(v2[i])
-                        end
+                        val = JuMP.value(v) - JuMP.value(v2)
                     end
                 end
             else
                 if haskey(mapping, node)
                     v =
-                        jmodel2.master_problem.ext[:expansions][mapping[node]][name]
+                        i == 0 ?
+                        jmodel2.master_problem.ext[:expansions][mapping[node]][name] :
+                        jmodel2.master_problem.ext[:expansions][mapping[node]][name][i]
                     if rounded
-                        if i == 0
-                            val =
-                                round(JuMP.value(v) - sp.ext[:options][name][7])
-                        else
-                            val = round(
-                                JuMP.value(v[i]) - sp.ext[:options][name][7],
-                            )
-                        end
+                        val = round(JuMP.value(v) - options[7])
                     else
-                        if i == 0
-                            val = JuMP.value(v) - sp.ext[:options][name][7]
-                        else
-                            val = JuMP.value(v[i]) - sp.ext[:options][name][7]
-                        end
+                        val = JuMP.value(v) - options[7]
                     end
                 end
             end
         end
-        slacks = jmodel2.master_problem.ext[:cover_slacks][mapping[node]][name]
 
-        if rounded
-            if i == 0
-                if haskey(slacks, 1)
-                    val -= round(JuMP.value(slacks[1]))
-                end
-                if haskey(slacks, 2)
-                    val += round(JuMP.value(slacks[2]))
-                end
-            else
-                if haskey(slacks[i], 1)
-                    val -= round(JuMP.value(slacks[i][1]))
-                end
-                if haskey(slacks[i], 2)
-                    val += round(JuMP.value(slacks[i][2]))
-                end
-            end
-        else
-            if i == 0
-                if haskey(slacks, 1)
-                    val -= JuMP.value(slacks[1])
-                end
-                if haskey(slacks, 2)
-                    val += JuMP.value(slacks[2])
-                end
-            else
-                if haskey(slacks[i], 1)
-                    val -= JuMP.value(slacks[i][1])
-                end
-                if haskey(slacks[i], 2)
-                    val += JuMP.value(slacks[i][2])
-                end
-            end
-        end
+        slacks =
+            i == 0 ?
+            jmodel2.master_problem.ext[:cover_slacks][mapping[node]][name] :
+            jmodel2.master_problem.ext[:cover_slacks][mapping[node]][name][i]
 
-        bc = nothing
         sp_var =
             i == 0 ? jmodel.sub_problems[node][name] :
             jmodel.sub_problems[node][name][i]
 
-        bc = BranchConstraint(sp_var, :eq, val, node)
+        bc = nothing
+
+        if haskey(slacks, 1) || haskey(slacks, 2)
+            if !haskey(slacks, 2)
+                bc = BranchConstraint(sp_var, :le, val, node)
+            elseif !haskey(slacks, 1)
+                bc = BranchConstraint(sp_var, :ge, val, node)
+            else
+                bc = nothing
+            end
+        else
+            bc = BranchConstraint(sp_var, :eq, val, node)
+        end
 
         return bc
     end
@@ -1359,12 +1366,11 @@ function set_policy!(
             i_min = max(1, depth(node) - options[3] - options[2] + 2)
             i_max = depth(node) + 1 - options[2]
             interval = i_min:i_max
-            pre = history(node)
+            pre = reverse(history(node))
             hist = AbstractTree[]
             for i in interval
                 push!(hist, pre[i])
             end
-
             if options[4] == :Con
                 if typeof(var) <: AbstractArray
                     for i in eachindex(var)
@@ -1436,7 +1442,8 @@ function set_policy!(
             end
         end
     end
-    return jmodel.ext[:branches] = [Branch(bcs)]
+    jmodel.ext[:branches] = [Branch(bcs)]
+    return
 end
 
 function resolve_fixed(jmodel::JuDGEModel)

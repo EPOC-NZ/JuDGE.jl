@@ -166,6 +166,59 @@ include(joinpath(_EXAMPLES_DIR, "solvers", "setup_glpk.jl"))
         @test cutting_stock(test = true) == 70.0
     end
 
+    @testset "Lag, duration, set_policy" begin
+        include(joinpath(_EXAMPLES_DIR, "set_policy_test.jl"))
+        @test test_set_policy(
+            [0, 1, 0, 1],
+            [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+            0,
+            1,
+        ) ≈ 141.5 atol = 1e-2
+        @test test_set_policy(
+            [0, 1, 0, 1],
+            [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+            0,
+            2,
+        ) ≈ 34.125 atol = 1e-2
+        @test test_set_policy(
+            [0, 1, 0, 1],
+            [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+            0,
+            3,
+        ) ≈ 23.875 atol = 1e-2
+        @test test_set_policy(
+            [0, 1, 0, 1],
+            [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+            1,
+            1,
+        ) ≈ 103.0 atol = 1e-2
+        @test test_set_policy(
+            [0, 1, 0, 1],
+            [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+            1,
+            2,
+        ) ≈ 0.0 atol = 1e-2
+        @test test_set_policy(
+            [0, 1, 0, 1],
+            [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+            1,
+            3,
+        ) ≈ 0.0 atol = 1e-2
+        @test test_set_policy(
+            [0, 1, 1, 1],
+            [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+            0,
+            1,
+        ) ≈ 48.5 atol = 1e-2
+        @test test_set_policy_state(
+            [0, 1, 1, 1],
+            [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+        ) ≈ 46.828 atol = 1e-2
+        @test test_set_policy_state(
+            [0, 1, 0, 1],
+            [0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0],
+        ) ≈ 109.266 atol = 1e-2
+    end
     @testset "EVPI / VSS" begin
         include(joinpath(_EXAMPLES_DIR, "EVPI_and_VSS.jl"))
         rand_array = [
