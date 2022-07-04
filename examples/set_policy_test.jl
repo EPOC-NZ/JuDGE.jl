@@ -1,4 +1,3 @@
-using Random
 using JuMP
 using JuDGE
 
@@ -81,8 +80,6 @@ function test_set_policy_state(D1::Vector{Int}, D2::Vector{Int})
         @constraint(sp, -x >= Z)
         @constraint(sp, x + y == D[node])
 
-        #@capitalcosts(sp,Z*10)
-        #@ongoingcosts(sp,Z*40*(JuDGE.depth(node)+1.2))
         @objective(sp, Min, x + 1000.0y)
 
         return sp

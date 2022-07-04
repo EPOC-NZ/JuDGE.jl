@@ -1297,8 +1297,8 @@ function set_policy!(
             jmodel2.master_problem.ext[:cover_slacks][mapping[node]][name][i]
 
         sp_var =
-            i == 0 ? jmodel.sub_problems[node][name] :
-            jmodel.sub_problems[node][name][i]
+            i == 0 ? jmodel.sub_problems[node].ext[:expansions][name] :
+            jmodel.sub_problems[node].ext[:expansions][name][i]
 
         bc = nothing
 
