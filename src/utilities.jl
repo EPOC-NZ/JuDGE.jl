@@ -437,6 +437,9 @@ function solution_to_dictionary(deteq::DetEqModel; prefix::String = "")
                     strkey = replace(strkey, ")" => "")
                     strkey = replace(strkey, "(" => "")
                     strkey = replace(strkey, ", " => ",")
+                    if strkey[end] == ','
+                        strkey = strkey[1:end-1]
+                    end
                     solution[node][Symbol(prefix * ss[1])][strkey] =
                         JuMP.value(var[i])
                 end
