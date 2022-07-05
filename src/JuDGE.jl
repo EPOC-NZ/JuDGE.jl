@@ -1220,28 +1220,35 @@ function set_policy!(
         i::Union{Int,CartesianIndex},
         rounded::Bool,
     )
-        if rounded
-            if i == 0
-                val2 = round(JuMP.value(var2))
+        if var2 != nothing
+            if rounded
+                if i == 0
+                    val2 = round(JuMP.value(var2))
+                else
+                    val2 = round(JuMP.value(var2[i]))
+                end
             else
-                val2 = round(JuMP.value(var2[i]))
+                if i == 0
+                    val2 = JuMP.value(var2)
+                else
+                    val2 = JuMP.value(var2[i])
+                end
             end
-        else
             if i == 0
-                val2 = JuMP.value(var2)
+                JuMP.fix(var, val2, force = true)
             else
-                val2 = JuMP.value(var2[i])
+                JuMP.fix(var[i], val2, force = true)
             end
         end
-        if i == 0
-            JuMP.fix(var, val2, force = true)
-        else
-            JuMP.fix(var[i], val2, force = true)
-        end
-        val = 0.0
+        val = nothing
         if options[1] == :cumulative
+            missing_node = false
             for n in hist
                 if haskey(mapping, n)
+                    if val == nothing
+                        val = 0.0
+                    end
+
                     v =
                         jmodel2.master_problem.ext[:expansions][mapping[n]][name]
                     if rounded
@@ -1257,7 +1264,13 @@ function set_policy!(
                             val += JuMP.value(v[i])
                         end
                     end
+                else
+                    missing_node = true
+                    break
                 end
+            end
+            if missing_node
+                val = nothing
             end
         elseif options[1] == :state
             if node.parent != nothing
@@ -1292,9 +1305,8 @@ function set_policy!(
         end
 
         slacks =
-            i == 0 ?
-            jmodel2.master_problem.ext[:cover_slacks][mapping[node]][name] :
-            jmodel2.master_problem.ext[:cover_slacks][mapping[node]][name][i]
+            i == 0 ? jmodel.master_problem.ext[:cover_slacks][node][name] :
+            jmodel.master_problem.ext[:cover_slacks][node][name][i]
 
         sp_var =
             i == 0 ? jmodel.sub_problems[node].ext[:expansions][name] :
@@ -1302,18 +1314,19 @@ function set_policy!(
 
         bc = nothing
 
-        if haskey(slacks, 1) || haskey(slacks, 2)
-            if !haskey(slacks, 2)
-                bc = BranchConstraint(sp_var, :le, val, node)
-            elseif !haskey(slacks, 1)
-                bc = BranchConstraint(sp_var, :ge, val, node)
+        if val != nothing
+            if haskey(slacks, 1) || haskey(slacks, 2)
+                if !haskey(slacks, 2)
+                    bc = BranchConstraint(sp_var, :le, val, node)
+                elseif !haskey(slacks, 1)
+                    bc = BranchConstraint(sp_var, :ge, val, node)
+                else
+                    bc = nothing
+                end
             else
-                bc = nothing
+                bc = BranchConstraint(sp_var, :eq, val, node)
             end
-        else
-            bc = BranchConstraint(sp_var, :eq, val, node)
         end
-
         return bc
     end
 
@@ -1356,21 +1369,27 @@ function set_policy!(
     end
     bcs = BranchConstraint[]
     for node in collect(jmodel.tree)
-        if !haskey(mapping, node)
-            continue
+        node2 = nothing
+        if haskey(mapping, node)
+            node2 = mapping[node]
+            #continue
         end
-        node2 = mapping[node]
+
         for (name, var) in jmodel.master_problem.ext[:expansions][node]
-            var2 = jmodel2.master_problem.ext[:expansions][node2][name]
+            var2 =
+                node2 == nothing ? nothing :
+                jmodel2.master_problem.ext[:expansions][node2][name]
             options = jmodel.sub_problems[jmodel.tree].ext[:options][name]
             i_min = max(1, depth(node) - options[3] - options[2] + 2)
             i_max = depth(node) + 1 - options[2]
             interval = i_min:i_max
+
             pre = reverse(history(node))
             hist = AbstractTree[]
             for i in interval
                 push!(hist, pre[i])
             end
+
             if options[4] == :Con
                 if typeof(var) <: AbstractArray
                     for i in eachindex(var)
