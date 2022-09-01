@@ -861,7 +861,6 @@ function fractionalcount(jmodel::JuDGEModel, inttol::Float64)
                 val = JuMP.value(col.var)
                 count += min(val - floor(val), ceil(val) - val) > inttol ? 1 : 0
             end
-            return count
         end
     end
 
@@ -1134,10 +1133,8 @@ function fix_expansions(jmodel::JuDGEModel, force_match::Bool)
                     value += JuMP.value(slacks[2])
                 end
 
-                if sp.ext[:options][name][8][2] == 0
-                    value = floor(value)
-                elseif sp.ext[:options][name][8][1] == 0
-                    value = ceil(value)
+                if sp.ext[:options][name][4] ∈ [:Bin, :Int]
+                    value = round(value)
                 end
 
                 JuMP.fix(var2, value, force = true)

@@ -100,6 +100,30 @@ function Base.map(f, dict::Dict)
     return Dict(key => f(dict[key]) for key in keys(dict))
 end
 
+function Base.getindex(tree::AbstractTree, indices...)
+    ind = collect(indices)
+    if typeof(ind) != Vector{Int}
+        error("'indices' must be a list of integers")
+    end
+    return get_node(tree, collect(indices))
+end
+
+function Base.getindex(tree::AbstractTree, indices::Vector{Int})
+    return get_node(tree, indices)
+end
+
+function Base.getindex(tree::AbstractTree, name::String)
+    nodes = collect(tree)
+
+    for n in nodes
+        if n.name == name
+            return n
+        end
+    end
+
+    return error("Tree does not contain $(name)")
+end
+
 function Base.show(io::IO, tree::AbstractTree)
     if typeof(tree) == Tree
         if tree.name != ""
