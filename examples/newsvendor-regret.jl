@@ -1,5 +1,4 @@
-using JuMP
-using JuDGE
+using JuMP, JuDGE, Plots
 
 if !isdefined(@__MODULE__, :JuDGE_MP_Solver)
     # Replace this with another file in `/solvers` as appropriate.
@@ -56,13 +55,13 @@ function newsvendor_regret(;
     return deteq
 end
 
-tree = narytree(5, 3)
+tree = narytree(5, 4)
 
 deteq1 = newsvendor_regret(
     depth = 5,
     cost = 5.0,
     price = 8.0,
-    demands = [10, 20, 30],
+    demands = [10, 20, 30, 40],
     CVaR = RiskNeutral(),
     mytree = tree,
 )
@@ -71,26 +70,27 @@ deteq2 = newsvendor_regret(
     depth = 5,
     cost = 5.0,
     price = 8.0,
-    demands = [10, 20, 30],
-    CVaR = Risk(0.5, 0.1),
+    demands = [10, 20, 30, 40],
+    CVaR = Risk(0.6, 0.1),
     mytree = tree,
 )
-
-plot(JuDGE.scenarios_CDF(deteq1, tol = 1e-8))
-plot!(JuDGE.scenarios_CDF(deteq2, tol = 1e-8))
 
 deteq3 = newsvendor_regret(
     depth = 5,
     cost = 5.0,
     price = 8.0,
-    demands = [10, 20, 30],
+    demands = [10, 20, 30, 40],
     CVaR = [
-        Risk(0.3, 0.3),
-        Risk(0.2, 0.5, offset = JuDGE.get_scen_objs(deteq1)),
+        Risk(0.3, 0.1),
+        Risk(0.7, 0.5, offset = JuDGE.get_scen_objs(deteq1)),
     ],
     mytree = tree,
 )
 
+plotly()
+
+plot(JuDGE.scenarios_CDF(deteq1, tol = 1e-8))
+plot!(JuDGE.scenarios_CDF(deteq2, tol = 1e-8))
 plot!(JuDGE.scenarios_CDF(deteq3, tol = 1e-8))
 
 offset = JuDGE.get_scen_objs(deteq1)
@@ -101,12 +101,13 @@ plot(
     [(riskprobs[leaf], scenprof[leaf]) for leaf in keys(riskprobs)],
     seriestype = :scatter,
 )
+
 plot(
     [
         (scenprof[leaf], scenprof[leaf] - offset[leaf]) for
         leaf in keys(riskprobs)
     ],
-    marker_z = [1000 * riskprobs[leaf] for leaf in keys(riskprobs)],
+    marker_z = [riskprobs[leaf] for leaf in keys(riskprobs)],
     color = :jet,
     alpha = 0.3,
     seriestype = :scatter,

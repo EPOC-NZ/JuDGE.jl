@@ -288,10 +288,10 @@ function compute_risk_probs(
         beta = risk[i].α
         for scen in so
             if scen[1] > beta
-                riskprob[scen[3]] += risk[i].λ * beta
+                riskprob[scen[3]] += risk[i].λ * beta / risk[i].α
                 beta = 0
             else
-                riskprob[scen[3]] += risk[i].λ * scen[1]
+                riskprob[scen[3]] += risk[i].λ * scen[1] / risk[i].α
                 beta -= scen[1]
             end
         end
