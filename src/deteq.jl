@@ -385,9 +385,9 @@ function build_deteq(
                         JuDGE.copy_variable!(model, variables[index])
 
                     var_name =
-                        isempty(JuMP.name(variable)) ?
-                        string("_[", index(variable).value, "]") :
-                        JuMP.name(variable)
+                        isempty(JuMP.name(variables[index])) ?
+                        string("_[", index(variables[index]).value, "]") :
+                        JuMP.name(variables[index])
 
                     JuMP.set_name(
                         model.ext[:master_vars][node][name][key],
