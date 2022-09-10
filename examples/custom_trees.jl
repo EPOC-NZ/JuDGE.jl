@@ -19,8 +19,8 @@ function TreeA()
     nodesA = collect(treeA)
 
     return probabilityA[nodesA[10]] == 0.1 &&
-           probabilityA[get_node(treeA, leafnodesA[3])] == 0.1 &&
-           probabilityA[get_node(treeA, [1, 2, 1, 1, 1])] == 0.1
+           probabilityA[treeA[leafnodesA[3]]] == 0.1 &&
+           probabilityA[treeA[1, 2, 1, 1, 1]] == 0.1
 end
 
 function TreeB()
@@ -60,7 +60,7 @@ function TreeC(; visualise = false)
         )
     end
 
-    return probabilityC[get_node(treeC, [1, 2, 1, 1, 1])] ≈ 0.1
+    return probabilityC[treeC[1, 2, 1, 1, 1]] ≈ 0.1
 end
 
 function TreeD()

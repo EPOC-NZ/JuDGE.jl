@@ -247,6 +247,63 @@ function compute_objval(
     return obj + EV_weight * EV
 end
 
+function compute_risk_probs(model::Union{JuDGEModel,DetEqModel})
+    scenarios = get_scen_objs(model)
+    probabilities = model.probabilities
+    risk = model.risk
+    return compute_risk_probs(scenarios, probabilities, risk)
+end
+
+function compute_risk_probs(
+    scenarios::Dict{Leaf,Float64},
+    probabilities::Dict{AbstractTree,Float64},
+    risk::Union{Risk,Vector{Risk}},
+)
+    scenario_objs = Vector{Tuple{Float64,Float64,Leaf}}()
+    riskprob = Dict{Leaf,Float64}()
+
+    for (leaf, val) in scenarios
+        push!(scenario_objs, (probabilities[leaf], val, leaf))
+        riskprob[leaf] = 0
+    end
+    EV_weight = 1.0
+
+    if typeof(risk) == Risk
+        if risk.α == 1.0 || risk.λ == 0.0
+            risk = []
+        else
+            risk = [risk]
+        end
+    end
+    for i in 1:length(risk)
+        EV_weight -= risk[i].λ
+        so = copy(scenario_objs)
+        if risk[i].offset != nothing
+            for j in 1:length(so)
+                so[j] =
+                    (so[j][1], so[j][2] - risk[i].offset[so[j][3]], so[j][3])
+            end
+        end
+        sort!(so, by = i -> i[2], rev = true)
+        beta = risk[i].α
+        for scen in so
+            if scen[1] > beta
+                riskprob[scen[3]] += risk[i].λ * beta
+                beta = 0
+            else
+                riskprob[scen[3]] += risk[i].λ * scen[1]
+                beta -= scen[1]
+            end
+        end
+    end
+
+    for i in keys(scenarios)
+        riskprob[i] += EV_weight * probabilities[i]
+    end
+
+    return riskprob
+end
+
 """
     solution_to_dictionary(jmodel::JuDGEModel; prefix::String = "")
 
@@ -643,6 +700,69 @@ function get_active_columns(jmodel::JuDGEModel; inttol = 10^-7)
     end
 
     return active
+end
+
+function get_scen_objs(jmodel::JuDGEModel)
+    offset = Dict{Leaf,Float64}()
+    for leaf in JuDGE.get_leafnodes(jmodel.tree)
+        offset[leaf] = value(jmodel.master_problem.ext[:scenprofit_var][leaf])
+    end
+    return offset
+end
+
+function get_scen_objs(deteq::DetEqModel)
+    offset = Dict{Leaf,Float64}()
+    for leaf in JuDGE.get_leafnodes(deteq.tree)
+        offset[leaf] = value(deteq.problem.ext[:scenario_obj][leaf])
+    end
+    return offset
+end
+
+function scenarios_CDF(model::Union{JuDGEModel,DetEqModel}; tol::Float64 = 1e-8)
+    scenobj = Tuple{Float64,Float64}[]
+    if typeof(model) == JuDGEModel
+        for leaf in JuDGE.get_leafnodes(model.tree)
+            push!(
+                scenobj,
+                (
+                    value(model.master_problem.ext[:scenprofit_var][leaf]),
+                    model.probabilities[leaf],
+                ),
+            )
+        end
+    else
+        for leaf in JuDGE.get_leafnodes(model.tree)
+            push!(
+                scenobj,
+                (
+                    value(model.problem.ext[:scenario_obj][leaf]),
+                    model.probabilities[leaf],
+                ),
+            )
+        end
+    end
+    sort!(scenobj)
+
+    total = 0.0
+    for i in 1:length(scenobj)
+        total += scenobj[i][2]
+        scenobj[i] = (scenobj[i][1], total)
+    end
+
+    scenobj2 = Tuple{Float64,Float64}[]
+
+    prev = 0.0
+    prev_obj = -Inf
+    for i in 1:length(scenobj)
+        if i < length(scenobj) && scenobj[i+1][1] - scenobj[i][1] < tol
+            continue
+        end
+        push!(scenobj2, (scenobj[i][1], prev))
+        prev = scenobj[i][2]
+        push!(scenobj2, (scenobj[i][1], prev))
+    end
+
+    return scenobj2
 end
 
 # function create_dash(

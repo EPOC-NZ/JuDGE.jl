@@ -371,7 +371,7 @@ function build_deteq(
 
                 JuMP.set_name(
                     model.ext[:master_vars][node][name],
-                    string(var_name, "#", node.name),
+                    string(var_name, "_master#", node.name),
                 )
 
                 model.ext[:master_names][node][name] = string(name)
@@ -521,6 +521,7 @@ function build_deteq(
                 end
                 if sp.ext[:options][name][8][1] != Inf
                     v1 = @variable(model)
+                    JuMP.set_name(v1, string("slack_", name, "#", node.name))
                     set_lower_bound(v1, 0)
                     expr -= v1
                     for leaf in leafnodes
@@ -533,6 +534,7 @@ function build_deteq(
                 end
                 if sp.ext[:options][name][8][2] != Inf
                     v2 = @variable(model)
+                    JuMP.set_name(v2, string("surplus_", name, "#", node.name))
                     set_lower_bound(v2, 0)
                     expr += v2
                     for leaf in leafnodes
@@ -572,6 +574,18 @@ function build_deteq(
                     end
                     if sp.ext[:options][name][8][1] != Inf
                         v1 = @variable(model)
+                        JuMP.set_name(
+                            v1,
+                            string(
+                                "slack_",
+                                name,
+                                "[",
+                                key,
+                                "]",
+                                "#",
+                                node.name,
+                            ),
+                        )
                         set_lower_bound(v1, 0)
                         expr -= v1
                         for leaf in leafnodes
@@ -584,6 +598,18 @@ function build_deteq(
                     end
                     if sp.ext[:options][name][8][2] != Inf
                         v2 = @variable(model)
+                        JuMP.set_name(
+                            v2,
+                            string(
+                                "surplus_",
+                                name,
+                                "[",
+                                key,
+                                "]",
+                                "#",
+                                node.name,
+                            ),
+                        )
                         set_lower_bound(v2, 0)
                         expr += v2
                         for leaf in leafnodes
