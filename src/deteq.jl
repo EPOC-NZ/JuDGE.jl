@@ -151,6 +151,7 @@ function build_deteq(
     leafs = get_leafnodes(tree)
     for leaf in leafs
         scen_var[leaf] = @variable(model)
+        JuMP.set_name(scen_var[leaf], string("scenario_obj#", leaf.name))
         scen_con[leaf] = @constraint(model, 0 == scen_var[leaf])
         set_objective_coefficient(model, scen_var[leaf], probabilities[leaf])
     end
@@ -209,6 +210,16 @@ function build_deteq(
         for variable in all_variables(sp)
             model.ext[:vars][node][variable] =
                 JuDGE.copy_variable!(model, variable)
+
+            var_name =
+                isempty(JuMP.name(variable)) ?
+                string("_[", index(variable).value, "]") : JuMP.name(variable)
+
+            JuMP.set_name(
+                model.ext[:vars][node][variable],
+                string(var_name, "#", node.name),
+            )
+
             if variable == sp.ext[:objective]
                 for leaf in leafnodes
                     set_normalized_coefficient(
@@ -352,6 +363,17 @@ function build_deteq(
                 variable = sp.ext[:expansions][name]
                 model.ext[:master_vars][node][name] =
                     JuDGE.copy_variable!(model, variable)
+
+                var_name =
+                    isempty(JuMP.name(variable)) ?
+                    string("_[", index(variable).value, "]") :
+                    JuMP.name(variable)
+
+                JuMP.set_name(
+                    model.ext[:master_vars][node][name],
+                    string(var_name, "#", node.name),
+                )
+
                 model.ext[:master_names][node][name] = string(name)
             elseif typeof(exps) <: AbstractArray
                 variables = sp.ext[:expansions][name]
@@ -361,6 +383,16 @@ function build_deteq(
                     key = densekey_to_tuple(index)
                     model.ext[:master_vars][node][name][key] =
                         JuDGE.copy_variable!(model, variables[index])
+
+                    var_name =
+                        isempty(JuMP.name(variable)) ?
+                        string("_[", index(variable).value, "]") :
+                        JuMP.name(variable)
+
+                    JuMP.set_name(
+                        model.ext[:master_vars][node][name][key],
+                        string(var_name, "#", node.name),
+                    )
                     if typeof(exps) <: JuMP.Containers.SparseAxisArray ||
                        typeof(exps) <: JuMP.Containers.DenseAxisArray
                         model.ext[:master_names][node][name][key] =
