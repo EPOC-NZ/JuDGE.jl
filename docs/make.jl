@@ -7,10 +7,10 @@ makedocs(
     format = Documenter.HTML(prettyurls = get(ENV, "CI", nothing) == "true"),
     pages = [
         "JuDGE" => "index.md",
-		"Tutorials" => "tutorials.md",
+        "Tutorials" => "tutorials.md",
         "API Reference" => "api.md",
     ],
 )
-"Tutorials" => "tutorials.md",
+
 
 deploydocs(repo = "github.com/EPOC-NZ/JuDGE.jl.git", devurl = "docs")
