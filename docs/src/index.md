@@ -27,7 +27,7 @@ to converge to an optimal solution.
 
 ## Requirements
 
-JuDGE requires Julia-1.3+, JuMP and appropriate optimiser(s). For academics,
+JuDGE requires Julia-1.6+, JuMP and appropriate optimiser(s). For academics,
 Gurobi / CPLEX provide free academic licenses, otherwise, you can use CBC/Clp or
 GLPK.
 
@@ -36,7 +36,7 @@ GLPK.
 JuDGE is installed by the `Pkg` utility provided by Julia. In the Julia REPL,
 simply make the following function call.
 
-    ] add "https://github.com/EPOC-UoA/JuDGE.jl"
+    ] add "https://github.com/EPOC-NZ/JuDGE.jl"
 
 Then, in your Julia script, use
 
