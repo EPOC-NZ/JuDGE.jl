@@ -692,3 +692,97 @@ function get_objval(deteq::DetEqModel; risk = deteq.risk)
 
     return compute_objval(scenario_objs, deteq.probabilities, risk)
 end
+
+"""
+set_policy!(
+    deteq::DetEqModel,
+    deteq2::DetEqModel,
+    mapping::Union{Symbol,Dict{AbstractTree,AbstractTree}})
+
+Fixes the policy of a DetEqModel object based on another DetEqModel object.
+
+### Required Arguments
+`deteq` is the deterministic equivalent model for which we wish to set the policy.
+`deteq2` is the deterministic equivalent model from which we wish to copy the policy.
+`mapping` is can either be set to the symbol `:by_depth` or `:by_nodeID` or be an explicit
+dictionary mapping the nodes in `deteq.tree` the nodes in `deteq2.tree`. For any node in `deteq.tree`
+that is not mapped, no policy is set.
+"""
+function set_policy!(
+    deteq::DetEqModel,
+    deteq2::DetEqModel,
+    mapping::Union{Symbol,Dict{AbstractTree,AbstractTree}},
+)
+    if termination_status(deteq2.problem) != MOI.OPTIMAL &&
+       termination_status(deteq2.problem) != MOI.INTERRUPTED &&
+       termination_status(deteq2.problem) != MOI.LOCALLY_SOLVED &&
+       termination_status(deteq2.problem) != MOI.INTERRUPTED
+        error("You need to first solve the model that sets the policy.")
+    end
+
+    if typeof(mapping) == Symbol
+        mode = mapping
+        mapping = Dict{AbstractTree,AbstractTree}()
+        if mode == :by_depth
+            if length(get_leafnodes(deteq2.tree)) == 1
+                for node in collect(deteq.tree)
+                    dpth = depth(node)
+                    for node2 in collect(deteq2.tree)
+                        if depth(node2) == dpth
+                            mapping[node] = node2
+                            break
+                        end
+                    end
+                end
+            else
+                error("Cannot map nodes by depth since this is ambiguous.")
+            end
+        elseif mode == :by_nodeID
+            for node in collect(deteq.tree)
+                for node2 in collect(deteq2.tree)
+                    if getID(node) == getID(node2)
+                        mapping[node] = node2
+                        break
+                    end
+                end
+            end
+        else
+            error("Invalid mapping mode. Use ':by_depth' or ':by_nodeID'.")
+        end
+    end
+
+    for node in collect(deteq.tree)
+        node2 = nothing
+        if haskey(mapping, node)
+            node2 = mapping[node]
+        end
+
+        for (name, var) in deteq.problem.ext[:master_vars][node]
+            var2 =
+                node2 == nothing ? nothing :
+                deteq2.problem.ext[:master_vars][node2][name]
+            if typeof(var) <: AbstractArray
+                for i in eachindex(var)
+                    if var2 != nothing
+                        val2 = round(JuMP.value(var2[i]))
+                    else
+                        val2 = JuMP.value(var2[i])
+                    end
+                    if is_integer(var[i]) || is_binary(var[i])
+                        val2 = round(val2)
+                    end
+                    JuMP.fix(var[i], val2, force = true)
+                end
+            elseif isa(var, VariableRef)
+                if var2 != nothing
+                    val2 = JuMP.value(var2)
+                    if is_integer(var) || is_binary(var)
+                        val2 = round(val2)
+                    end
+                    JuMP.fix(var, val2, force = true)
+                end
+            end
+        end
+    end
+    return
+end
