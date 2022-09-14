@@ -200,6 +200,24 @@ function clear_expansions(a::Dict{AbstractTree,Dict{Symbol,Any}})
     return assign
 end
 
+"""
+    compute_objval(
+        scenarios::Dict{Leaf,Float64},
+        probabilities::Dict{AbstractTree,Float64},
+        risk::Union{Risk,Vector{Risk}},
+    )
+
+This function finds the risk-adjusted objective value, given scenario objectives, a probability distribution
+and a risk measure.
+
+### Required arguments
+
+`scenarios` is a dictionary mapping leaf nodes to scenario objectives.
+
+`probabilities` is a dictionary mapping each leaf nodes to the probability of reaching that node.
+
+`risk` is a `JuDGE.Risk` object or a vector of such objects.
+"""
 function compute_objval(
     scenarios::Dict{Leaf,Float64},
     probabilities::Dict{AbstractTree,Float64},
@@ -247,17 +265,103 @@ function compute_objval(
     return obj + EV_weight * EV
 end
 
-function compute_risk_probs(model::Union{JuDGEModel,DetEqModel})
-    scenarios = get_scen_objs(model)
-    probabilities = model.probabilities
-    risk = model.risk
-    return compute_risk_probs(scenarios, probabilities, risk)
+"""
+    function get_risk_probs(
+        model::Union{JuDGEModel,DetEqModel},
+        mode::Symbol = :marginal,
+    )
+Returns a dictionary mapping the nodes in a tree to a probability (either marginal or conditional).
+
+### Required arguments
+
+`model` is a JuDGE or DetEq model for which we wish to find the risk-adjusted probabilities for each scenario.
+
+`mode` is either `:marginal` or `:conditional`.
+"""
+function get_risk_probs(
+    model::Union{JuDGEModel,DetEqModel},
+    mode::Symbol = :marginal,
+)
+    m = typeof(model) == JuDGEModel ? model.master_problem : model.problem
+
+    cons = all_constraints(m, AffExpr, MOI.EqualTo{Float64})
+
+    if mode ∉ [:marginal, :conditional]
+        error(
+            "Invalid probability mode. mode must be :conditional or :marginal",
+        )
+    end
+
+    try
+        π = Dict{Leaf,Float64}()
+        leafnodes = JuDGE.get_leafnodes(model.tree)
+        for i in 1:length(leafnodes)
+            π[leafnodes[i]] = -dual(cons[i])
+        end
+
+        pr = Dict{AbstractTree,Float64}()
+        for node in nodes
+            if typeof(node) == Leaf
+                pr[node] = π[node]
+            else
+                pr[node] = sum(pr[n] for n in node.children)
+            end
+        end
+
+        if mode == :conditional
+            nodes = reverse(collect(model.tree))
+
+            for node in nodes
+                if node.parent != nothing && pr[node.parent] > 0
+                    pr[node] /= pr[node.parent]
+                else
+                    delete!(pr, node)
+                end
+            end
+            return pr
+        else
+            return pr
+        end
+    catch
+        @warn(
+            "Dual variables not present; computing approximate probabilities."
+        )
+    end
+
+    return compute_risk_probs(
+        get_scen_objs(model),
+        model.probabilities,
+        model.risk,
+        mode,
+    )
 end
 
+"""
+    function compute_risk_probs(
+        scenarios::Dict{Leaf,Float64},
+        probabilities::Dict{AbstractTree,Float64},
+        risk::Union{Risk,Vector{Risk}},
+        mode::Symbol = :marginal,
+    )
+Returns a dictionary mapping the nodes in a tree to a probability (either marginal or conditional).
+
+Note that this method is only approximate and may not be able to provide useful insights when there is degeneracy.
+
+### Required arguments
+
+`scenarios` is a dictionary mapping leaf nodes to scenario costs.
+
+`probabilities` is a dictionary mapping nodes to marginal probabilities.
+
+`risk` is a `JuDGE.Risk` object, or a vector of such objects.
+
+`mode` is either `:marginal` or `:conditional`.
+"""
 function compute_risk_probs(
     scenarios::Dict{Leaf,Float64},
     probabilities::Dict{AbstractTree,Float64},
     risk::Union{Risk,Vector{Risk}},
+    mode::Symbol = :marginal,
 )
     scenario_objs = Vector{Tuple{Float64,Float64,Leaf}}()
     riskprob = Dict{Leaf,Float64}()
@@ -301,7 +405,71 @@ function compute_risk_probs(
         riskprob[i] += EV_weight * probabilities[i]
     end
 
-    return riskprob
+    node = collect(keys(probabilities))[1]
+    while node.parent != nothing
+        node = node.parent
+    end
+    nodes = reverse(collect(node))
+
+    pr = Dict{AbstractTree,Float64}()
+    for node in nodes
+        if typeof(node) == Leaf
+            pr[node] = riskprob[node]
+        else
+            pr[node] = sum(pr[n] for n in node.children)
+        end
+    end
+
+    if mode == :conditional
+        for node in nodes
+            if node.parent != nothing && pr[node.parent] > 0.0
+                pr[node] /= pr[node.parent]
+            else
+                delete!(pr, node)
+            end
+        end
+        return pr
+    elseif mode == :marginal
+        return pr
+    else
+        error(
+            "Invalid probability mode. mode must be :conditional or :marginal",
+        )
+    end
+end
+
+"""
+    get_regret(
+        model::Union{JuDGEModel,DetEqModel},
+        baseline::Union{JuDGEModel,DetEqModel},
+    )
+
+The function takes a pair of solved `JuDGEModel` or `DetEqModel` objects that use the same `JuDGE.Tree`,
+and compares the cost in each scenario. A dictionary of regret for each leaf node of the tree is returned.
+
+### Required Arguments
+`model` is the model whose solution is the policy that we may wish to implement.
+
+`baseline` is the same model, but using a different policy (it was solved using a different risk measure).
+"""
+function get_regret(
+    model::Union{JuDGEModel,DetEqModel},
+    baseline::Union{JuDGEModel,DetEqModel},
+)
+    if model.tree != baseline.tree
+        error(
+            "This function (currently) requires both policies to use the same trees when computing regret.",
+        )
+    end
+
+    objs1 = get_scen_objs(model)
+    objs2 = get_scen_objs(baseline)
+
+    regret = Dict{Leaf,Float64}()
+    for leaf in get_leafnodes(model.tree)
+        regret[leaf] = objs1[leaf] - objs2[leaf]
+    end
+    return regret
 end
 
 """
@@ -535,6 +703,7 @@ Use the best solution from a JuDGEModel to warm start the deterministic equivale
 
 ### Required Arguments
 `deteq` is an unsolved DetEqModel
+
 `jmodel` is a solved JuDGEModel
 """
 function set_starting_solution!(deteq::DetEqModel, jmodel::JuDGEModel)
@@ -575,16 +744,19 @@ end
     add_to_dictionary!(
         original::Dict{AbstractTree,Dict{Symbol,Any}},
         add::T where {T<:Dict},
-        sym::Union{Symbol,Vector{Symbol}})
+        sym::Symbol,
+    )
 
 Given a dictionary produced by the `solution_to_dictionary()` function, and a Symbol or Symbol[],
 this function adds that/those Symbol(s) to the dictionary.
 
 ### Required Arguments
 `original` is a dictionary produced by `solution_to_dictionary()`
+
 `add` is the dictionary (with the keys being `AbstractTree` objects) that you wish to add to
 the `original` dictionary
-`sym` is a Symbol or Symbol vector of keys to add to each node within the dictionary
+
+`sym` is a Symbol to use as the key within the dictionary
 """
 function add_to_dictionary!(
     original::Dict{AbstractTree,Dict{Symbol,Any}},
@@ -619,6 +791,7 @@ this function removes that/those Symbol(s) from the dictionary.
 
 ### Required Arguments
 `original` is a dictionary produced by `solution_to_dictionary()`
+
 `sym` is a Symbol or Symbol vector of keys to remove from each node within the dictionary.
 """
 function remove_from_dictionary!(
@@ -638,6 +811,20 @@ function remove_from_dictionary!(
     end
 end
 
+"""
+    combine_dictionaries(
+        dict1::Dict{AbstractTree,Dict{Symbol,Any}},
+        dict2::Dict{AbstractTree,Dict{Symbol,Any}},
+    )
+
+This function combines two dictionaries that have been created using `solution_to_dictionary(...)`.
+Note that the `prefix` argument should be used so that different keys are created in each dictionary.
+
+### Required Arguments
+`dict1` is a dictionary created using `solution_to_dictionary(...)`.
+
+`dict2` is a dictionary created using `solution_to_dictionary(...)`.
+"""
 function combine_dictionaries(
     dict1::Dict{AbstractTree,Dict{Symbol,Any}},
     dict2::Dict{AbstractTree,Dict{Symbol,Any}},
@@ -702,6 +889,14 @@ function get_active_columns(jmodel::JuDGEModel; inttol = 10^-7)
     return active
 end
 
+"""
+    get_scen_objs(jmodel::JuDGEModel)
+
+This function creates a dictionary that contains the scenario profit for each leaf node.
+
+### Required Arguments
+    `jmodel` is a solved `JuDGEModel`.
+"""
 function get_scen_objs(jmodel::JuDGEModel)
     offset = Dict{Leaf,Float64}()
     for leaf in JuDGE.get_leafnodes(jmodel.tree)
@@ -710,6 +905,14 @@ function get_scen_objs(jmodel::JuDGEModel)
     return offset
 end
 
+"""
+    get_scen_objs(deteq::DetEqModel)
+
+This function creates a dictionary that contains the scenario profit for each leaf node.
+
+### Required Arguments
+    `deteq` is a solved `DetEqModel`.
+"""
 function get_scen_objs(deteq::DetEqModel)
     offset = Dict{Leaf,Float64}()
     for leaf in JuDGE.get_leafnodes(deteq.tree)
@@ -718,6 +921,18 @@ function get_scen_objs(deteq::DetEqModel)
     return offset
 end
 
+"""
+    scenarios_CDF(model::Union{JuDGEModel,DetEqModel}; tol::Float64 = 1e-8)
+
+Given a solved `JuDGEModel` or `DetEqModel`, this function will return a set of points
+for a cumulative distribution function for the scenario costs.
+
+### Required Arguments
+`model` is either a solved `JuDGEModel` or `DetEqModel`.
+
+### Optional Arguments
+`tol` is the tolerance used to reduce the number of distinct objective values.
+"""
 function scenarios_CDF(model::Union{JuDGEModel,DetEqModel}; tol::Float64 = 1e-8)
     scenobj = Tuple{Float64,Float64}[]
     if typeof(model) == JuDGEModel

@@ -61,6 +61,7 @@ JuDGE.solution_to_dictionary(::JuDGEModel)
 JuDGE.get_active_columns(::JuDGEModel)
 JuDGE.write_solution_to_file(::JuDGEModel,::String)
 JuDGE.print_expansions(::JuDGEModel)
+JuDGE.get_scen_objs(::JuDGEModel)
 ```
 
 ## Deterministic Equivalent
@@ -77,6 +78,7 @@ JuDGE.set_starting_solution!
 JuDGE.solution_to_dictionary(::DetEqModel)
 JuDGE.write_solution_to_file(::DetEqModel,::String)
 JuDGE.print_expansions(::DetEqModel)
+JuDGE.get_scen_objs(::DetEqModel)
 ```
 
 ## Risk
@@ -90,4 +92,10 @@ JuDGE.Risk(::Float64;::Union{Dict{Leaf,Float64},Nothing},::Union{Float64,Nothing
 ```@docs
 JuDGE.remove_from_dictionary!
 JuDGE.add_to_dictionary!
+JuDGE.scenarios_CDF
+JuDGE.combine_dictionaries
+JuDGE.get_regret
+JuDGE.get_risk_probs
+JuDGE.compute_risk_probs
+JuDGE.compute_objval
 ```

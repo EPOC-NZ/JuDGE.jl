@@ -12,13 +12,15 @@ end
 
 """
 	DetEqModel(tree::AbstractTree,
-               probabilities,
-               sub_problem_builder::Function,
-               solver
-               discount_factor=1.0,
-               risk=RiskNeutral,
-               sideconstraints=nothing,
-               check=true)
+        probabilities,
+        sub_problem_builder::Function,
+        solver
+        discount_factor=1.0,
+        risk=RiskNeutral,
+        sideconstraints=nothing,
+        check=true,
+        perfect_foresight = false
+    )
 
 Define a deterministic equivalent model for the stochastic capacity expansion
 problem.
@@ -636,6 +638,11 @@ function build_deteq(
         map(Main.eval, clear_expansions(model.ext[:master_vars]))
     end
 
+    if remain < 0.0
+        @warn(
+            "Sum of risk-measure weights exceeds 1.0; there will be a negative weight on expectation."
+        )
+    end
     objective_fn = objective_function(model) * remain
 
     for i in 1:length(risk_objectives)

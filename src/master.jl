@@ -438,6 +438,11 @@ function build_master(
         map(Main.eval, clear_expansions(model.ext[:expansions]))
     end
 
+    if remain < 0.0
+        @warn(
+            "Sum of risk-measure weights exceeds 1.0; there will be a negative weight on expectation."
+        )
+    end
     objective_fn = objective_function(model) * remain
 
     for i in 1:length(risk_objectives)

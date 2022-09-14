@@ -451,6 +451,10 @@ specified.
 `heuristic` is a user-defined function that typically would perform an improvement heuristic when a
 new incumbent is found.
 
+`skip_nodes` is the maximum number of nodes to skip in any iteration. Nodes are added to the `skip_list`
+if they return a 0 reduced cost. Once the `length(skip_list)==skip_nodes` the list is emptied, and a
+complete iteration is run in order to update the lower bound.
+
 `verbose` if 0, all output from solve will be suppressed, if 1, the subproblem solve process will be
 suppressed. Default is 2.
 
