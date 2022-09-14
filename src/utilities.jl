@@ -300,6 +300,7 @@ function get_risk_probs(
         end
 
         pr = Dict{AbstractTree,Float64}()
+        nodes = reverse(collect(model.tree))
         for node in nodes
             if typeof(node) == Leaf
                 pr[node] = π[node]
@@ -309,8 +310,6 @@ function get_risk_probs(
         end
 
         if mode == :conditional
-            nodes = reverse(collect(model.tree))
-
             for node in nodes
                 if node.parent != nothing && pr[node.parent] > 0
                     pr[node] /= pr[node.parent]

@@ -31,7 +31,7 @@ function newsvendor_regret(;
         model = Model(JuDGE_SP_Solver)
         @expansion(model, 0 <= papers_ordered <= 1000, lag = 1, duration = 1)
         @capitalcosts(model, papers_ordered * cost)
-        @variable(model, sales >= 0, Int)
+        @variable(model, sales >= 0)#, Int)
         @constraint(model, maxsale1, sales <= papers_ordered)
         @constraint(model, maxsale2, sales <= demand[node])
         @objective(model, Min, -price * sales)
@@ -55,13 +55,13 @@ function newsvendor_regret(;
     return deteq
 end
 
-tree = narytree(5, 4)
+tree = narytree(5, 3)
 
 deteq1 = newsvendor_regret(
     depth = 5,
     cost = 5.0,
     price = 8.0,
-    demands = [10, 20, 30, 40],
+    demands = [10, 20, 30],
     CVaR = RiskNeutral(),
     mytree = tree,
 )
@@ -70,7 +70,7 @@ deteq2 = newsvendor_regret(
     depth = 5,
     cost = 5.0,
     price = 8.0,
-    demands = [10, 20, 30, 40],
+    demands = [10, 20, 30],
     CVaR = Risk(0.6, 0.1),
     mytree = tree,
 )
@@ -79,7 +79,7 @@ deteq3 = newsvendor_regret(
     depth = 5,
     cost = 5.0,
     price = 8.0,
-    demands = [10, 20, 30, 40],
+    demands = [10, 20, 30],
     CVaR = [
         Risk(0.3, 0.1),
         Risk(0.7, 0.5, offset = JuDGE.get_scen_objs(deteq1)),
@@ -87,32 +87,46 @@ deteq3 = newsvendor_regret(
     mytree = tree,
 )
 
-plotly()
+#plotly()
+pyplot()
 
 plot(JuDGE.scenarios_CDF(deteq1, tol = 1e-8))
 plot!(JuDGE.scenarios_CDF(deteq2, tol = 1e-8))
 plot!(JuDGE.scenarios_CDF(deteq3, tol = 1e-8))
 
-offset = JuDGE.get_scen_objs(deteq1)
-riskprobs = JuDGE.compute_risk_probs(deteq3)
+riskprobs = JuDGE.get_risk_probs(deteq3)
 scenprof = JuDGE.get_scen_objs(deteq3)
+regret = JuDGE.get_regret(deteq3, deteq1)
 
 plot(
-    [(riskprobs[leaf], scenprof[leaf]) for leaf in keys(riskprobs)],
+    [(scenprof[leaf], riskprobs[leaf]) for leaf in keys(scenprof)],
+    seriestype = :scatter,
+)
+
+plot(
+    [(scenprof[leaf], regret[leaf]) for leaf in keys(scenprof)],
+    marker_z = [riskprobs[leaf] for leaf in keys(scenprof)],
+    color = :jet,
+    alpha = 0.3,
     seriestype = :scatter,
 )
 
 plot(
     [
-        (scenprof[leaf], scenprof[leaf] - offset[leaf]) for
-        leaf in keys(riskprobs)
+        (scenprof[leaf], regret[leaf], riskprobs[leaf]) for
+        leaf in keys(scenprof)
     ],
-    marker_z = [riskprobs[leaf] for leaf in keys(riskprobs)],
+    marker_z = [riskprobs[leaf] for leaf in keys(scenprof)],
     color = :jet,
     alpha = 0.3,
     seriestype = :scatter,
 )
 
 solution = JuDGE.solution_to_dictionary(deteq3)
-JuDGE.add_to_dictionary!(solution, riskprobs, :risk)
+JuDGE.add_to_dictionary!(solution, riskprobs, :marginal_pr)
+JuDGE.add_to_dictionary!(
+    solution,
+    JuDGE.get_risk_probs(deteq3, :conditional),
+    :conditional_pr,
+)
 JuDGE.visualize_tree(tree, solution, filename = "newsvendor")
