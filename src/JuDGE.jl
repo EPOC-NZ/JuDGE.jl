@@ -145,6 +145,10 @@ function JuDGEModel(
     nodes = collect(tree)
     sub_problems = Dict(i => sub_problem_builder(getID(i)) for i in nodes)
 
+    for sp in values(sub_problems)
+        sp.ext[:all_vars] = copy(sp.obj_dict)
+    end
+
     if check
         @info "Checking sub-problem format"
         check_specification_is_legal(sub_problems)
@@ -403,6 +407,11 @@ function add_column(
     if sub_problem.ext[:form] == :mixed
         add_mixed_cover(master, sub_problem, column)
     end
+
+    JuMP.set_name(
+        column.var,
+        string("col$(length(master.ext[:columns][node]))", "#", node.name),
+    )
     return column
 end
 

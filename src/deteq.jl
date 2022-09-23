@@ -144,6 +144,7 @@ function build_deteq(
     @objective(model, Min, 0)
 
     model.ext[:vars] = Dict()
+    model.ext[:all_vars] = Dict{AbstractTree,Dict{Symbol,Any}}()
     model.ext[:master_vars] = Dict{AbstractTree,Dict{Symbol,Any}}()
     model.ext[:master_names] = Dict{AbstractTree,Dict{Symbol,Any}}()
 
@@ -209,6 +210,8 @@ function build_deteq(
     for (node, sp) in sub_problems
         leafnodes = get_leafnodes(node)
         model.ext[:vars][node] = Dict()
+        model.ext[:all_vars][node] = Dict{Symbol,Any}()
+
         for variable in all_variables(sp)
             model.ext[:vars][node][variable] =
                 JuDGE.copy_variable!(model, variable)
@@ -232,6 +235,21 @@ function build_deteq(
                 end
             end
         end
+
+        for (s, var) in sp.obj_dict
+            if typeof(var) == VariableRef
+                model.ext[:all_vars][node][s] = var
+            elseif typeof(var) <: AbstractArray &&
+                   !occursin("tRef{", string(typeof(var)))
+                model.ext[:all_vars][node][s] = Dict{Any,VariableRef}()
+                for index in keys(var)
+                    key = densekey_to_tuple(index)
+                    model.ext[:all_vars][node][s][key] =
+                        model.ext[:vars][node][var[index]]
+                end
+            end
+        end
+
         copy_values = false
         loct = list_of_constraint_types(sp)
 
@@ -438,6 +456,9 @@ function build_deteq(
                 end
             end
         end
+        for (v, var) in model.ext[:master_vars][node]
+            model.ext[:all_vars][node][Symbol("$(v)_master")] = var
+        end
     end
 
     for leaf in get_leafnodes(tree)
@@ -446,16 +467,16 @@ function build_deteq(
             node = nodes[n]
             sp = sub_problems[node]
             df = discount_factor^depth(node)
+            past = history(node)
             for (name, exps) in sp.ext[:expansions]
                 interval =
-                    max(
-                        1,
-                        n - sp.ext[:options][name][3] -
-                        sp.ext[:options][name][2] + 1,
-                    ):n-sp.ext[:options][name][2]
+                    (1+sp.ext[:options][name][2]):min(
+                        n,
+                        sp.ext[:options][name][2] + sp.ext[:options][name][3],
+                    )
                 disc = Dict{Int,Float64}()
                 for i in interval
-                    disc[i] = df / discount_factor^(i - 1)
+                    disc[i] = df * discount_factor^(i - 1)
                 end
                 if isa(exps, VariableRef)
                     variable = sp.ext[:expansions][name]
@@ -759,26 +780,21 @@ function set_policy!(
     end
 
     for node in collect(deteq.tree)
-        node2 = nothing
-        if haskey(mapping, node)
-            node2 = mapping[node]
-        end
+        node2 = haskey(mapping, node) ? mapping[node] : nothing
 
         for (name, var) in deteq.problem.ext[:master_vars][node]
             var2 =
                 node2 == nothing ? nothing :
                 deteq2.problem.ext[:master_vars][node2][name]
-            if typeof(var) <: AbstractArray
-                for i in eachindex(var)
+            if typeof(var) <: Dict
+                for i in keys(var)
                     if var2 != nothing
-                        val2 = round(JuMP.value(var2[i]))
-                    else
                         val2 = JuMP.value(var2[i])
+                        if is_integer(var[i]) || is_binary(var[i])
+                            val2 = round(val2)
+                        end
+                        JuMP.fix(var[i], val2, force = true)
                     end
-                    if is_integer(var[i]) || is_binary(var[i])
-                        val2 = round(val2)
-                    end
-                    JuMP.fix(var[i], val2, force = true)
                 end
             elseif isa(var, VariableRef)
                 if var2 != nothing

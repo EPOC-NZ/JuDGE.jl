@@ -979,6 +979,14 @@ function scenarios_CDF(model::Union{JuDGEModel,DetEqModel}; tol::Float64 = 1e-8)
     return scenobj2
 end
 
+function Base.getindex(jmodel::JuDGEModel, node::AbstractTree)
+    return jmodel.sub_problems[node].ext[:all_vars]
+end
+
+function Base.getindex(deteq::DetEqModel, node::AbstractTree)
+    return deteq.problem.ext[:all_vars][node]
+end
+
 # function create_dash(
 #     blocks::Union{Nothing,Vector{DashWrapper.Block}},
 #     callbacks::Union{

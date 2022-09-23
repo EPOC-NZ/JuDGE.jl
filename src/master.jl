@@ -113,6 +113,20 @@ function build_master(
                 model.ext[:expansions][node][name] =
                     copy_variable!(model, variable)
             end
+            if typeof(model.ext[:expansions][node][name]) == VariableRef
+                JuMP.set_name(
+                    model.ext[:expansions][node][name],
+                    string("$(name)_master", "#", node.name),
+                )
+            else
+                for index in keys(model.ext[:expansions][node][name])
+                    key = densekey_to_tuple(index)
+                    JuMP.set_name(
+                        model.ext[:expansions][node][name][index],
+                        string("$(name)[$key]_master", "#", node.name),
+                    )
+                end
+            end
             if model.ext[:options][name][5] != nothing
                 if typeof(variable) <: AbstractArray
                     for i in eachindex(variable)
@@ -143,6 +157,8 @@ function build_master(
                     )
                 end
             end
+            sp.ext[:all_vars][Symbol(string(name, "_master"))] =
+                model.ext[:expansions][node][name]
         end
     end
 

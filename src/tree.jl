@@ -915,6 +915,9 @@ Given a `tree`, and an array of `indices`, this function returns the correspondi
 """
 function get_node(tree::AbstractTree, indices::Vector{Int})
     node = tree
+    if indices[1] != 1
+        error("The first index of a tree is always 1.")
+    end
     for i in 2:length(indices)
         node = node.children[indices[i]]
     end
