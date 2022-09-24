@@ -274,6 +274,16 @@ include(joinpath(_EXAMPLES_DIR, "solvers", "setup_glpk.jl"))
         ) ≈ 109.266 atol = 1e-2
     end
 
+    @testset "Variable Types / Starting solution" begin
+        include(joinpath(_EXAMPLES_DIR, "variable_types_test.jl"))
+        tree = narytree(3, 1)
+        demand = Dict(zip(collect(tree), [4, 6, 8, 10]))
+
+        obj1, obj2 = test_variable_types(tree, demand)
+        @test obj1 ≈ 40.812 atol = 1e-3
+        @test obj2 ≈ 40.812 atol = 1e-3
+    end
+
     @testset "EVPI / VSS" begin
         include(joinpath(_EXAMPLES_DIR, "EVPI_and_VSS.jl"))
         rand_array = [

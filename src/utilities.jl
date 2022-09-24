@@ -164,7 +164,11 @@ function key_to_tuple(key::Any)
 end
 
 function key_to_string(key::Union{Int,Tuple,Symbol,AbstractString})
-    return replace(string(key), ")" => "", "(" => "", "\"" => "", ", " => ",")
+    #return replace(string(key), ")" => "", "(" => "", "\"" => "", ", " => ",") # needs Julia 1.7
+    str = replace(string(key), ")" => "")
+    str = replace(str, "(" => "")
+    str = replace(str, "\"" => "")
+    return replace(str, ", " => ",")
 end
 
 function get_keys(var::AbstractArray)
@@ -672,10 +676,11 @@ function set_starting_solution!(deteq::DetEqModel, jmodel::JuDGEModel)
             else
                 for index in
                     get_keys(jmodel.master_problem.ext[:expansions][node][name])
+                    key = key_to_tuple(index)
                     set_start_value(
-                        deteq.problem.ext[:master_vars][node][name][index],
+                        deteq.problem.ext[:master_vars][node][name][key],
                         JuMP.value(
-                            jmodel.master_problem.ext[:expansions][node][name][index],
+                            jmodel.master_problem.ext[:expansions][node][name][key],
                         ),
                     )
                 end
