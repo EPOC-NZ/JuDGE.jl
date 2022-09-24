@@ -242,8 +242,8 @@ function build_deteq(
             elseif typeof(var) <: AbstractArray &&
                    !occursin("tRef{", string(typeof(var)))
                 model.ext[:all_vars][node][s] = Dict{Any,VariableRef}()
-                for index in keys(var)
-                    key = densekey_to_tuple(index)
+                for index in get_keys(var)
+                    key = key_to_tuple(index)
                     model.ext[:all_vars][node][s][key] =
                         model.ext[:vars][node][var[index]]
                 end
@@ -399,8 +399,8 @@ function build_deteq(
                 variables = sp.ext[:expansions][name]
                 model.ext[:master_vars][node][name] = Dict()
                 model.ext[:master_names][node][name] = Dict()
-                for index in keys(exps)
-                    key = densekey_to_tuple(index)
+                for index in get_keys(exps)
+                    key = key_to_tuple(index)
                     model.ext[:master_vars][node][name][key] =
                         JuDGE.copy_variable!(model, variables[index])
 
@@ -413,20 +413,14 @@ function build_deteq(
                         model.ext[:master_vars][node][name][key],
                         string(var_name, "#", node.name),
                     )
-                    if typeof(exps) <: JuMP.Containers.SparseAxisArray ||
-                       typeof(exps) <: JuMP.Containers.DenseAxisArray
-                        model.ext[:master_names][node][name][key] =
-                            string(name) * "[" * string(index.I) * "]"
-                    else
-                        model.ext[:master_names][node][name][key] =
-                            string(name) * "[" * string(index) * "]"
-                    end
+                    model.ext[:master_names][node][name][key] =
+                        string(name) * "[" * string(key) * "]"
                 end
             end
             if sp.ext[:options][name][5] != nothing
                 if typeof(exps) <: AbstractArray
-                    for index in keys(exps)
-                        key = densekey_to_tuple(index)
+                    for index in get_keys(exps)
+                        key = key_to_tuple(index)
                         set_lower_bound(
                             model.ext[:master_vars][node][name][key],
                             sp.ext[:options][name][5],
@@ -441,8 +435,8 @@ function build_deteq(
             end
             if sp.ext[:options][name][6] != nothing
                 if typeof(exps) <: AbstractArray
-                    for index in keys(exps)
-                        key = densekey_to_tuple(index)
+                    for index in get_keys(exps)
+                        key = key_to_tuple(index)
                         set_upper_bound(
                             model.ext[:master_vars][node][name][key],
                             sp.ext[:options][name][6],
@@ -467,7 +461,6 @@ function build_deteq(
             node = nodes[n]
             sp = sub_problems[node]
             df = discount_factor^depth(node)
-            past = history(node)
             for (name, exps) in sp.ext[:expansions]
                 interval =
                     (1+sp.ext[:options][name][2]):min(
@@ -492,8 +485,8 @@ function build_deteq(
                     )
                 elseif typeof(exps) <: AbstractArray
                     variables = sp.ext[:expansions][name]
-                    for index in keys(exps)
-                        key = densekey_to_tuple(index)
+                    for index in get_keys(exps)
+                        key = key_to_tuple(index)
                         cost_coef =
                             df * coef(sp.ext[:capitalcosts], variables[index])
                         for j in interval
@@ -573,8 +566,8 @@ function build_deteq(
                 #     @constraint(model,sum(model.ext[:master_vars][n][name] for n in history_function(node))<=1)
                 # end
             elseif typeof(exps) <: AbstractArray
-                for i in keys(exps)
-                    key = densekey_to_tuple(i)
+                for i in get_keys(exps)
+                    key = key_to_tuple(i)
                     if sp.ext[:options][name][1] == :cumulative
                         if length(interval) == 0
                             expr = 0

@@ -119,8 +119,8 @@ function build_master(
                     string("$(name)_master", "#", node.name),
                 )
             else
-                for index in keys(model.ext[:expansions][node][name])
-                    key = densekey_to_tuple(index)
+                for index in get_keys(model.ext[:expansions][node][name])
+                    key = key_to_tuple(index)
                     JuMP.set_name(
                         model.ext[:expansions][node][name][index],
                         string("$(name)[$key]_master", "#", node.name),

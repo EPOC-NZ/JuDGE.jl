@@ -63,52 +63,33 @@ function print_expansions(
                     end
                 end
                 val = JuMP.value.(var)
-                if typeof(var) <: JuMP.Containers.SparseAxisArray
-                    val = val.data
-                end
-                for key in keys(val)
-                    if !onlynonzero || val[key] > inttol
-                        if typeof(val) <: Array
-                            strkey = string(key)
-                            strkey = replace(strkey, "CartesianIndex(" => "")
-                            strkey = replace(strkey, ")" => "")
-                            strkey = replace(strkey, ", " => ",")
-                            temp =
-                                "Node " *
-                                node.name *
-                                ": \"" *
-                                string(x) *
-                                "[" *
-                                strkey *
-                                "]\" " *
-                                process(x, val[key])
-                        elseif typeof(val) <: Dict
-                            strkey = string(key)
-                            strkey = replace(strkey, ")" => "")
-                            strkey = replace(strkey, "(" => "")
-                            strkey = replace(strkey, ", " => ",")
-                            temp =
-                                "Node " *
-                                node.name *
-                                ": \"" *
-                                string(x) *
-                                "[" *
-                                strkey *
-                                "]\" " *
-                                process(x, val[key])
-                        else
-                            typeof(val) <: JuMP.Containers.DenseAxisArray
-                            temp =
-                                "Node " * node.name * ": \"" * string(x) * "["
 
-                            for i in 1:length(val.axes)-1
-                                temp *= string(key[i]) * ","
-                            end
-                            temp *=
-                                string(key[length(val.axes)]) *
-                                "]\" " *
-                                process(x, val[key])
-                        end
+                for key in get_keys(val)
+                    if !onlynonzero || val[key] > inttol
+                        #if typeof(val) <: Array
+                        strkey = key_to_string(key_to_tuple(key))
+
+                        temp =
+                            "Node " *
+                            node.name *
+                            ": \"" *
+                            string(x) *
+                            "[" *
+                            strkey *
+                            "]\" " *
+                            process(x, val[key])
+                        #else
+                        #     temp =
+                        #         "Node " * node.name * ": \"" * string(x) * "["
+                        #
+                        #     for i in 1:length(val.axes)-1
+                        #         temp *= string(key[i]) * ","
+                        #     end
+                        #     temp *=
+                        #         string(key[length(val.axes)]) *
+                        #         "]\" " *
+                        #         process(x, val[key])
+                        # end
                         println(temp)
                     end
                 end
@@ -272,11 +253,7 @@ function format_output(node::AbstractTree, x::Symbol, exps, onlynonzero, inttol)
            typeof(exps) == Dict{Tuple,Int}
         for (key, exp) in exps
             if !onlynonzero || abs(exp) > inttol
-                s_key = string(key)
-                s_key = replace(s_key, "(" => "")
-                s_key = replace(s_key, ")" => "")
-                s_key = replace(s_key, "\"" => "")
-                s_key = replace(s_key, ", " => ",")
+                s_key = key_to_string(key)
                 println(
                     "Node " *
                     node.name *

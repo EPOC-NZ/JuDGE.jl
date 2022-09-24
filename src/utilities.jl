@@ -154,12 +154,24 @@ function coef(aff, x::JuMP.VariableRef)
     end
 end
 
-function densekey_to_tuple(key::Any)
-    if typeof(key) <: JuMP.Containers.DenseAxisArrayKey
+function key_to_tuple(key::Any)
+    if typeof(key) <: JuMP.Containers.DenseAxisArrayKey ||
+       typeof(key) <: CartesianIndex
         return length(key.I) == 1 ? key.I[1] : key.I
     else
         return key
     end
+end
+
+function key_to_string(key::Union{Int,Tuple,Symbol,AbstractString})
+    return replace(string(key), ")" => "", "(" => "", "\"" => "", ", " => ",")
+end
+
+function get_keys(var::AbstractArray)
+    if typeof(var) <: JuMP.Containers.SparseAxisArray
+        return keys(var.data)
+    end
+    return keys(var)
 end
 
 function unpack_expansions(a::Dict{AbstractTree,Dict{Symbol,Any}})
@@ -506,37 +518,10 @@ function solution_to_dictionary(jmodel::JuDGEModel; prefix::String = "")
                     solution[node][sym] = Dict{String,Float64}()
                 end
                 vals = JuMP.value.(vars)
-                if typeof(vars) <: JuMP.Containers.SparseAxisArray
-                    vals = vals.data
-                end
 
-                for key in keys(vals)
-                    temp = ""
-                    if typeof(vals) <: Array
-                        strkey = string(key)
-                        strkey = replace(strkey, "CartesianIndex(" => "")
-                        strkey = replace(strkey, ")" => "")
-                        strkey = replace(strkey, ", " => ",")
-                        temp = strkey
-                    elseif typeof(vals) <: Dict
-                        strkey = string(key)
-                        strkey = replace(strkey, ")" => "")
-                        strkey = replace(strkey, "(" => "")
-                        strkey = replace(strkey, ", " => ",")
-                        temp = strkey
-                    else
-                        if length(key.I) == 1
-                            strkey = string(key.I[1])
-                        else
-                            strkey = string(key.I)
-                            strkey = replace(strkey, ")" => "")
-                            strkey = replace(strkey, "(" => "")
-                            strkey = replace(strkey, "\"" => "")
-                            strkey = replace(strkey, ", " => ",")
-                        end
-                        temp = strkey
-                    end
-                    solution[node][sym][temp] = vals[key]
+                for key in get_keys(vals)
+                    strkey = key_to_string(key_to_tuple(key))
+                    solution[node][sym][strkey] = vals[key]
                 end
             end
         end
@@ -548,31 +533,10 @@ function solution_to_dictionary(jmodel::JuDGEModel; prefix::String = "")
                     solution[node][sym] = Dict{String,Float64}()
                 end
                 val = JuMP.value.(var)
-                if typeof(var) <: JuMP.Containers.SparseAxisArray
-                    val = val.data
-                end
-                for key in keys(val)
-                    temp = ""
-                    if typeof(val) <: Array
-                        strkey = string(key)
-                        strkey = replace(strkey, "CartesianIndex(" => "")
-                        strkey = replace(strkey, ")" => "")
-                        strkey = replace(strkey, ", " => ",")
-                        temp *= strkey
-                    elseif typeof(val) <: Dict
-                        strkey = string(key)
-                        strkey = replace(strkey, ")" => "")
-                        strkey = replace(strkey, "(" => "")
-                        strkey = replace(strkey, ", " => ",")
-                        temp *= strkey
-                    else
-                        for i in 1:length(val.axes)-1
-                            temp *= string(key[i]) * ","
-                        end
-                        temp *= string(key[length(val.axes)])
-                    end
 
-                    solution[node][sym][temp] = val[key]
+                for key in get_keys(val)
+                    strkey = key_to_string(key_to_tuple(key))
+                    solution[node][sym][strkey] = val[key]
                 end
             else
                 solution[node][sym] = JuMP.value(var)
@@ -639,15 +603,7 @@ function solution_to_dictionary(deteq::DetEqModel; prefix::String = "")
             if typeof(var) == VariableRef
                 ss = split(string(x), '[')
                 ss[1] *= "_master"
-                if length(ss) == 1
-                    solution[node][Symbol(prefix * ss[1])] = JuMP.value(var)
-                else
-                    # if Symbol(prefix * ss[1]) ∉ keys(solution[node])
-                    #     solution[node][Symbol(prefix * ss[1])] =
-                    #         Dict{String,Float64}()
-                    # end
-                    # solution[node][Symbol(prefix * ss[1])][ss[2][1:end-1]] = JuMP.value(var)
-                end
+                solution[node][Symbol(prefix * ss[1])] = JuMP.value(var)
             elseif typeof(var) <: Dict
                 for i in eachindex(var)
                     name = deteq.problem.ext[:master_names][node][x][i]
@@ -657,10 +613,7 @@ function solution_to_dictionary(deteq::DetEqModel; prefix::String = "")
                         solution[node][Symbol(prefix * ss[1])] =
                             Dict{String,Float64}()
                     end
-                    strkey = ss[2][1:end-1]
-                    strkey = replace(strkey, ")" => "")
-                    strkey = replace(strkey, "(" => "")
-                    strkey = replace(strkey, ", " => ",")
+                    strkey = key_to_string(ss[2][1:end-1])
                     if strkey[end] == ','
                         strkey = strkey[1:end-1]
                     end
@@ -708,18 +661,24 @@ Use the best solution from a JuDGEModel to warm start the deterministic equivale
 function set_starting_solution!(deteq::DetEqModel, jmodel::JuDGEModel)
     for node in collect(jmodel.tree)
         for (name, exps) in jmodel.master_problem.ext[:expansions][node]
-            for index in
-                keys(jmodel.master_problem.ext[:expansions][node][name])
-                key = JuDGE.densekey_to_tuple(index)
-                # @constraint(deteq.problem,deteq.problem.ext[:master_vars][node][name][key]==
-                #     JuMP.value(jmodel.master_problem.ext[:expansions][node][name][index])
-                # )
+            if typeof(jmodel.master_problem.ext[:expansions][node][name]) ==
+               VariableRef
                 set_start_value(
-                    deteq.problem.ext[:master_vars][node][name][key],
+                    deteq.problem.ext[:master_vars][node][name],
                     JuMP.value(
-                        jmodel.master_problem.ext[:expansions][node][name][index],
+                        jmodel.master_problem.ext[:expansions][node][name],
                     ),
                 )
+            else
+                for index in
+                    get_keys(jmodel.master_problem.ext[:expansions][node][name])
+                    set_start_value(
+                        deteq.problem.ext[:master_vars][node][name][index],
+                        JuMP.value(
+                            jmodel.master_problem.ext[:expansions][node][name][index],
+                        ),
+                    )
+                end
             end
         end
     end
@@ -730,7 +689,6 @@ function set_starting_solution!(deteq::DetEqModel, jmodel::JuDGEModel)
             temp[string(variable)] = variable
         end
         for variable in keys(deteq.problem.ext[:vars][node])
-            # @constraint(deteq.problem,deteq.problem.ext[:vars][node][variable]==JuMP.value(temp[string(variable)]))
             set_start_value(
                 deteq.problem.ext[:vars][node][variable],
                 JuMP.value(temp[string(variable)]),
