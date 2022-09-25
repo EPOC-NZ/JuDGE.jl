@@ -679,6 +679,7 @@ function build_deteq(
     set_objective_function(model, objective_fn)
 
     model.ext[:scenario_obj] = scen_var
+    model.ext[:scenario_con] = scen_con
 
     return model
 end

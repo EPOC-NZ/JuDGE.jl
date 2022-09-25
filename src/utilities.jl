@@ -311,8 +311,14 @@ function get_risk_probs(
     try
         π = Dict{Leaf,Float64}()
         leafnodes = JuDGE.get_leafnodes(model.tree)
-        for i in 1:length(leafnodes)
-            π[leafnodes[i]] = -dual(cons[i])
+        if typeof(model) == JuDGEModel
+            for leaf in leafnodes
+                π[leaf] = -dual(model.master_problem.ext[:scenprofit_con][leaf])
+            end
+        else
+            for leaf in leafnodes
+                π[leaf] = -dual(model.problem.ext[:scenario_con][leaf])
+            end
         end
 
         pr = Dict{AbstractTree,Float64}()

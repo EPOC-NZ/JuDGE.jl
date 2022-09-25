@@ -284,6 +284,45 @@ include(joinpath(_EXAMPLES_DIR, "solvers", "setup_glpk.jl"))
         @test obj2 ≈ 40.812 atol = 1e-3
     end
 
+    @testset "Risk aversion and implied probabilities" begin
+        include(joinpath(_EXAMPLES_DIR, "risk_test.jl"))
+        supply_nodes = [:a, :b, :c]
+        demand_nodes = [:x, :y, :z]
+
+        tree = narytree(1, 3)
+        demand = Dict(
+            zip(
+                collect(tree),
+                [
+                    Dict(zip(demand_nodes, [0, 0, 0])),
+                    Dict(zip(demand_nodes, [10, 20, 30])),
+                    Dict(zip(demand_nodes, [15, 30, 15])),
+                    Dict(zip(demand_nodes, [35, 20, 10])),
+                ],
+            ),
+        )
+
+        obj1, obj2 = transport_risk_test(
+            tree,
+            supply_nodes,
+            demand_nodes,
+            demand,
+            :decomp,
+        )
+        @test obj1 ≈ 218.335 atol = 1e-3
+        @test obj2 ≈ 218.335 atol = 1e-3
+
+        obj1, obj2 = transport_risk_test(
+            tree,
+            supply_nodes,
+            demand_nodes,
+            demand,
+            :deteq,
+        )
+        @test obj1 ≈ 218.335 atol = 1e-3
+        @test obj2 ≈ 218.335 atol = 1e-3
+    end
+
     @testset "EVPI / VSS" begin
         include(joinpath(_EXAMPLES_DIR, "EVPI_and_VSS.jl"))
         rand_array = [
