@@ -321,6 +321,30 @@ include(joinpath(_EXAMPLES_DIR, "solvers", "setup_glpk.jl"))
         )
         @test obj1 ≈ 218.335 atol = 1e-3
         @test obj2 ≈ 218.335 atol = 1e-3
+
+        regret, prob, total = transport_risk_test2(
+            tree,
+            supply_nodes,
+            demand_nodes,
+            demand,
+            :decomp,
+        )
+
+        @test regret ≈ 17.0 atol = 1e-3
+        @test prob ≈ 0.0333 atol = 1e-4
+        @test total ≈ 922.333 atol = 1e-3
+
+        regret, prob, total = transport_risk_test2(
+            tree,
+            supply_nodes,
+            demand_nodes,
+            demand,
+            :deteq,
+        )
+
+        @test regret ≈ 17.0 atol = 1e-3
+        @test prob ≈ 0.0333 atol = 1e-4
+        @test total ≈ 922.333 atol = 1e-3
     end
 
     @testset "EVPI / VSS" begin
