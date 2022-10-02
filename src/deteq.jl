@@ -238,7 +238,7 @@ function build_deteq(
 
         for (s, var) in sp.obj_dict
             if typeof(var) == VariableRef
-                model.ext[:all_vars][node][s] = var
+                model.ext[:all_vars][node][s] = model.ext[:vars][node][var]
             elseif typeof(var) <: AbstractArray &&
                    !occursin("tRef{", string(typeof(var)))
                 model.ext[:all_vars][node][s] = Dict{Any,VariableRef}()
@@ -524,6 +524,8 @@ function build_deteq(
                             index in interval
                         )
                     end
+                    model.ext[:all_vars][node][Symbol("$(name)_cumulative")] =
+                        copy(expr)
                 elseif sp.ext[:options][name][1] == :state
                     if node.parent == nothing
                         expr =
@@ -566,6 +568,8 @@ function build_deteq(
                 #     @constraint(model,sum(model.ext[:master_vars][n][name] for n in history_function(node))<=1)
                 # end
             elseif typeof(exps) <: AbstractArray
+                model.ext[:all_vars][node][Symbol("$(name)_cumulative")] =
+                    Dict()
                 for i in get_keys(exps)
                     key = key_to_tuple(i)
                     if sp.ext[:options][name][1] == :cumulative
@@ -577,6 +581,9 @@ function build_deteq(
                                 for index in interval
                             )
                         end
+                        model.ext[:all_vars][node][Symbol(
+                            "$(name)_cumulative",
+                        )][key] = copy(expr)
                     elseif sp.ext[:options][name][1] == :state
                         if node.parent == nothing
                             expr =

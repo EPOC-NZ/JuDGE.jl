@@ -145,10 +145,6 @@ function JuDGEModel(
     nodes = collect(tree)
     sub_problems = Dict(i => sub_problem_builder(getID(i)) for i in nodes)
 
-    for sp in values(sub_problems)
-        sp.ext[:all_vars] = copy(sp.obj_dict)
-    end
-
     if check
         @info "Checking sub-problem format"
         check_specification_is_legal(sub_problems)
@@ -157,6 +153,10 @@ function JuDGEModel(
         @info "Skipping checks of sub-problem format"
     end
     scale_objectives(tree, sub_problems, discount_factor)
+
+    for sp in values(sub_problems)
+        sp.ext[:all_vars] = copy(sp.obj_dict)
+    end
 
     if !perfect_foresight
         @info "Building master problem"
@@ -357,7 +357,7 @@ function add_column(
         if typeof(variable) <: AbstractArray
             coeffs[name] = Dict{Any,Float64}()
             vals = JuMP.value.(variable)
-            for i in eachindex(variable)
+            for i in get_keys(variable)
                 if sub_problem.ext[:options][name][4] != :Con
                     rval = round(vals[i])
                     if rval != 0.0
@@ -883,7 +883,7 @@ function fractionalcount(jmodel::JuDGEModel, inttol::Float64)
                 var = jmodel.master_problem.ext[:expansions][node][x]
                 slacks = jmodel.master_problem.ext[:cover_slacks][node][x]
                 if typeof(var) <: AbstractArray
-                    for key in eachindex(var)
+                    for key in get_keys(var)
                         val = JuMP.value(var[key])
                         count +=
                             min(val - floor(val), ceil(val) - val) > inttol ?
@@ -925,7 +925,7 @@ function updateduals(master, sub_problem, node, status, iter)
        status != MOI.DUAL_INFEASIBLE
         for (name, var) in sub_problem.ext[:expansions]
             if typeof(var) <: AbstractArray
-                for i in eachindex(var)
+                for i in get_keys(var)
                     set_objective_coefficient(
                         sub_problem,
                         var[i],
@@ -987,7 +987,7 @@ function updateduals(master, sub_problem, node, status, iter)
                 flip = 1
             end
             if typeof(var) <: AbstractArray
-                for i in eachindex(var)
+                for i in get_keys(var)
                     set_objective_coefficient(sub_problem, var[i], flip * oc)
                 end
             else
@@ -1046,7 +1046,7 @@ function fix_expansions(jmodel::JuDGEModel, force_match::Bool)
             var2 = sp.ext[:expansions][name]
             slacks = jmodel.master_problem.ext[:cover_slacks][node][name]
             if typeof(var) <: AbstractArray
-                for i in eachindex(var)
+                for i in get_keys(var)
                     value = 0.0
                     if sp.ext[:options][name][1] == :state
                         prev = node.parent
@@ -1188,7 +1188,7 @@ function unfix_expansions(jmodel::JuDGEModel)
             var2 = sp.ext[:expansions][name]
             slacks = jmodel.master_problem.ext[:cover_slacks][node][name]
             if typeof(var) <: AbstractArray
-                for i in eachindex(var)
+                for i in get_keys(var)
                     JuMP.unfix(var2[i])
                 end
             elseif isa(var, VariableRef)
@@ -1227,7 +1227,7 @@ function set_policy!(
         name,
         node::AbstractTree,
         options,
-        i::Union{Int,CartesianIndex},
+        i,
         rounded::Bool,
     )
         if var2 != nothing
@@ -1402,7 +1402,7 @@ function set_policy!(
 
             if options[4] == :Con
                 if typeof(var) <: AbstractArray
-                    for i in eachindex(var)
+                    for i in get_keys(var)
                         bc = set_var(
                             var,
                             var2,
@@ -1436,7 +1436,7 @@ function set_policy!(
                 end
             else
                 if typeof(var) <: AbstractArray
-                    for i in eachindex(var)
+                    for i in get_keys(var)
                         bc = set_var(
                             var,
                             var2,
@@ -1501,7 +1501,7 @@ function resolve_fixed(jmodel::JuDGEModel)
                             normalized_coefficient(con, slacks[2])
                     end
                 elseif typeof(var) <: AbstractArray
-                    for v in eachindex(var)
+                    for v in get_keys(var)
                         obj +=
                             JuMP.value(var[v]) *
                             normalized_coefficient(con, var[v])

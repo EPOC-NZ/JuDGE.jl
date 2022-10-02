@@ -245,7 +245,8 @@ function build_master(
             if typeof(variable) <: AbstractArray
                 model.ext[:coverconstraint][node][name] = Dict()
                 model.ext[:cover_slacks][node][name] = Dict()
-                for i in eachindex(variable)
+                sp.ext[:all_vars][Symbol(string(name, "_cumulative"))] = Dict()
+                for i in get_keys(variable)
                     if sp.ext[:options][name][1] == :cumulative
                         if length(interval) != 0
                             expr = sum(
@@ -266,6 +267,9 @@ function build_master(
                                 model.ext[:expansions][node.parent][name][i]
                         end
                     end
+                    sp.ext[:all_vars][Symbol(string(name, "_cumulative"))][key_to_tuple(
+                        i,
+                    )] = copy(expr)
 
                     model.ext[:cover_slacks][node][name][i] = Dict()
                     if sp.ext[:options][name][8][1] != Inf
@@ -299,6 +303,8 @@ function build_master(
                     else
                         expr = 0
                     end
+                    sp.ext[:all_vars][Symbol(string(name, "_cumulative"))] =
+                        copy(expr)
                 elseif sp.ext[:options][name][1] == :state
                     if node.parent == nothing
                         expr =
@@ -351,7 +357,7 @@ function build_master(
                 end
                 slacks = model.ext[:cover_slacks][node][name]
                 if typeof(variable) <: AbstractArray
-                    for i in eachindex(variable)
+                    for i in get_keys(variable)
                         cost_coef =
                             df * coef(sp.ext[:capitalcosts], variable[i])
                         for j in interval

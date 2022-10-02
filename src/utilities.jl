@@ -171,11 +171,9 @@ function key_to_string(key::Union{Int,Tuple,Symbol,AbstractString})
     return replace(str, ", " => ",")
 end
 
-function get_keys(var::AbstractArray)
-    if typeof(var) <: JuMP.Containers.SparseAxisArray
-        return keys(var.data)
-    end
-    return keys(var)
+function get_keys(var::Union{AbstractArray,Dict})
+    return typeof(var) <: JuMP.Containers.SparseAxisArray ? keys(var.data) :
+           keys(var)
 end
 
 function unpack_expansions(a::Dict{AbstractTree,Dict{Symbol,Any}})
@@ -494,21 +492,28 @@ function get_regret(
 end
 
 """
-    solution_to_dictionary(jmodel::JuDGEModel; prefix::String = "")
+    solution_to_dictionary(model::Union{JuDGEModel,DetEqModel}; prefix::String = "")
 
 Create a nested dictionary with the solution values for each node copied across to
 a standardised structure.
 
 ### Required Arguments
-`jmodel` is a solved JuDGEModel
+`model` is a solved JuDGEModel or DetEqModel
 
 ### Optional Arguments
 `prefix` is a string that will be prepended to each of the variable names (e.g. if comparing to versions of the same model)
 """
-function solution_to_dictionary(jmodel::JuDGEModel; prefix::String = "")
+function solution_to_dictionary(
+    model::Union{JuDGEModel,DetEqModel};
+    prefix::String = "",
+)
     function helper(node::AbstractTree, solution::T where {T<:Dict})
         solution[node] = Dict{Symbol,Any}()
-        var_groups = JuMP.object_dictionary(jmodel.sub_problems[node])
+
+        var_groups =
+            typeof(model) == DetEqModel ? model.problem.ext[:all_vars][node] :
+            model.sub_problems[node].ext[:all_vars]
+
         for (var_group, vars) in var_groups
             sym = Symbol(prefix * string(var_group))
             if typeof(vars) == VariableRef
@@ -533,102 +538,24 @@ function solution_to_dictionary(jmodel::JuDGEModel; prefix::String = "")
                     strkey = key_to_string(key_to_tuple(key))
                     solution[node][sym][strkey] = vals[key]
                 end
-            end
-        end
-
-        for (x, var) in jmodel.master_problem.ext[:expansions][node]
-            sym = Symbol(prefix * string(x) * "_master")
-            if typeof(var) <: AbstractArray
+            elseif typeof(vars) <: Dict
+                skip = false
+                for v in values(vars)
+                    if typeof(v) ∉ [VariableRef, AffExpr]
+                        skip = true
+                    end
+                    break
+                end
+                if skip
+                    continue
+                end
                 if sym ∉ keys(solution[node])
                     solution[node][sym] = Dict{String,Float64}()
                 end
-                val = JuMP.value.(var)
 
-                for key in get_keys(val)
+                for key in keys(vars)
                     strkey = key_to_string(key_to_tuple(key))
-                    solution[node][sym][strkey] = val[key]
-                end
-            else
-                solution[node][sym] = JuMP.value(var)
-            end
-        end
-
-        if typeof(node) == Tree
-            for child in node.children
-                helper(child, solution)
-            end
-        else
-            solution[node][Symbol(prefix * "scenario_obj")] =
-                JuMP.value(jmodel.master_problem.ext[:scenprofit_var][node])
-        end
-        return solution
-    end
-
-    if termination_status(jmodel.master_problem) != MOI.OPTIMAL &&
-       termination_status(jmodel.master_problem) != MOI.INTERRUPTED &&
-       termination_status(jmodel.master_problem) != MOI.TIME_LIMIT &&
-       termination_status(jmodel.master_problem) != MOI.LOCALLY_SOLVED
-        error("You need to first solve the decomposed model.")
-    end
-
-    if prefix != ""
-        prefix *= "_"
-    end
-
-    solution = Dict{AbstractTree,Dict{Symbol,Any}}()
-    return helper(jmodel.tree, solution)
-end
-
-"""
-    solution_to_dictionary(deteq::DetEqModel; prefix::String = "")
-
-Create a nested dictionary with the solution values for each node copied across to
-a standardised structure.
-
-### Required Arguments
-`deteq` is a solved DetEqModel
-
-### Optional Arguments
-`prefix` is a string that will be prepended to each of the variable names (e.g. if comparing to versions of the same model)
-"""
-function solution_to_dictionary(deteq::DetEqModel; prefix::String = "")
-    function helper(node::AbstractTree, solution::T where {T<:Dict})
-        solution[node] = Dict{Symbol,Any}()
-
-        for (x, var) in deteq.problem.ext[:vars][node]
-            ss = split(string(x), '[')
-            if length(ss) == 1
-                solution[node][Symbol(prefix * ss[1])] = JuMP.value(var)
-            else
-                if Symbol(prefix * ss[1]) ∉ keys(solution[node])
-                    solution[node][Symbol(prefix * ss[1])] =
-                        Dict{String,Float64}()
-                end
-                solution[node][Symbol(prefix * ss[1])][ss[2][1:end-1]] =
-                    JuMP.value(var)
-            end
-        end
-
-        for (x, var) in deteq.problem.ext[:master_vars][node]
-            if typeof(var) == VariableRef
-                ss = split(string(x), '[')
-                ss[1] *= "_master"
-                solution[node][Symbol(prefix * ss[1])] = JuMP.value(var)
-            elseif typeof(var) <: Dict
-                for i in eachindex(var)
-                    name = deteq.problem.ext[:master_names][node][x][i]
-                    ss = split(string(name), '[')
-                    ss[1] *= "_master"
-                    if Symbol(prefix * ss[1]) ∉ keys(solution[node])
-                        solution[node][Symbol(prefix * ss[1])] =
-                            Dict{String,Float64}()
-                    end
-                    strkey = key_to_string(ss[2][1:end-1])
-                    if strkey[end] == ','
-                        strkey = strkey[1:end-1]
-                    end
-                    solution[node][Symbol(prefix * ss[1])][strkey] =
-                        JuMP.value(var[i])
+                    solution[node][sym][strkey] = value(vars[key])
                 end
             end
         end
@@ -637,17 +564,29 @@ function solution_to_dictionary(deteq::DetEqModel; prefix::String = "")
             for child in node.children
                 helper(child, solution)
             end
+        elseif typeof(model) == DetEqModel
+            solution[node][Symbol(prefix * "scenario_obj")] =
+                JuMP.value(model.problem.ext[:scenario_obj][node])
         else
             solution[node][Symbol(prefix * "scenario_obj")] =
-                JuMP.value(deteq.problem.ext[:scenario_obj][node])
+                JuMP.value(model.master_problem.ext[:scenprofit_var][node])
         end
         return solution
     end
 
-    if termination_status(deteq.problem) != MOI.OPTIMAL &&
-       termination_status(deteq.problem) != MOI.TIME_LIMIT &&
-       termination_status(deteq.problem) != MOI.INTERRUPTED
-        error("You need to first solve the deterministic equivalent model.")
+    if typeof(model) == DetEqModel
+        if termination_status(model.problem) != MOI.OPTIMAL &&
+           termination_status(model.problem) != MOI.TIME_LIMIT &&
+           termination_status(model.problem) != MOI.INTERRUPTED
+            error("You need to first solve the deterministic equivalent model.")
+        end
+    else
+        if termination_status(model.master_problem) != MOI.OPTIMAL &&
+           termination_status(model.master_problem) != MOI.INTERRUPTED &&
+           termination_status(model.master_problem) != MOI.TIME_LIMIT &&
+           termination_status(model.master_problem) != MOI.LOCALLY_SOLVED
+            error("You need to first solve the decomposed model.")
+        end
     end
 
     if prefix != ""
@@ -655,7 +594,7 @@ function solution_to_dictionary(deteq::DetEqModel; prefix::String = "")
     end
 
     solution = Dict{AbstractTree,Dict{Symbol,Any}}()
-    return helper(deteq.tree, solution)
+    return helper(model.tree, solution)
 end
 
 """
