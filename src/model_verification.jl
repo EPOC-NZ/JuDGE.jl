@@ -1,19 +1,3 @@
-###
-# asserts for constructor of JuDGEModel
-###
-
-# Definition of an important set of constraints
-function NormalConstraints()
-    return [
-        (GenericAffExpr{Float64,VariableRef}, MOI.LessThan{Float64}),
-        (GenericAffExpr{Float64,VariableRef}, MOI.GreaterThan{Float64}),
-        (GenericAffExpr{Float64,VariableRef}, MOI.EqualTo{Float64}),
-        (VariableRef, MOI.LessThan{Float64}),
-        (VariableRef, MOI.GreaterThan{Float64}),
-        (VariableRef, MOI.EqualTo{Float64}),
-    ]
-end
-
 function check_specification_is_legal(sub_problems)
     message = "JuDGE Specification Error: "
     if !same_expansions_at_each_node(sub_problems)

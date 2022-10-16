@@ -1,7 +1,7 @@
 # Builds a deterministic equivalent by joining the subproblems into
 # a single MIP, then adding the constraints that there can only be
 # a single investment along any path in the tree.
-using DataStructures
+using OrderedCollections
 
 struct DetEqModel
     problem::JuMP.Model
