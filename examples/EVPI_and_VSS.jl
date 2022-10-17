@@ -37,7 +37,7 @@ function setup_model(seed::Int, numitems::Int, array)
     nodes = collect(mytree)
     totalnodes = length(nodes)
 
-    if array == nothing
+    if array === nothing
         array = createRandomArray(seed, totalnodes, numinvest, numitems)
     end
 
@@ -200,7 +200,7 @@ function policy_comparison(
 
         RH = JuDGEModel(tree3, pr, sub_problems, JuDGE_MP_Solver)
 
-        if RH_old != nothing
+        if RH_old !== nothing
             JuDGE.set_policy!(RH, RH_old, :by_nodeID)
         end
 

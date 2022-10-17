@@ -127,7 +127,7 @@ function build_master(
                     )
                 end
             end
-            if model.ext[:options][name][5] != nothing
+            if model.ext[:options][name][5] !== nothing
                 if typeof(variable) <: AbstractArray
                     for i in eachindex(variable)
                         set_lower_bound(
@@ -142,7 +142,7 @@ function build_master(
                     )
                 end
             end
-            if model.ext[:options][name][6] != nothing
+            if model.ext[:options][name][6] !== nothing
                 if typeof(variable) <: AbstractArray
                     for i in eachindex(variable)
                         set_upper_bound(
@@ -180,13 +180,13 @@ function build_master(
     risk_objectives = AffExpr[]
     remain = 1.0
     if typeof(risk) == Risk
-        if (risk.α == 1.0 || risk.λ == 0.0) && risk.bound == nothing
+        if (risk.α == 1.0 || risk.λ == 0.0) && risk.bound === nothing
             risk = []
         else
             risk = [risk]
         end
     end
-    for i in 1:length(risk)
+    for i in eachindex(risk)
         risk_objective = AffExpr(0.0)
         eta = @variable(model)
         for leaf in leafs
@@ -194,7 +194,7 @@ function build_master(
             w = @variable(model)
             set_lower_bound(v, 0.0)
             set_lower_bound(w, 0.0)
-            if risk[i].offset == nothing
+            if risk[i].offset === nothing
                 @constraint(model, v >= eta - model.ext[:scenprofit_var][leaf])
                 @constraint(model, w >= model.ext[:scenprofit_var][leaf] - eta)
                 add_to_expression!(
@@ -257,7 +257,7 @@ function build_master(
                             expr = 0
                         end
                     elseif sp.ext[:options][name][1] == :state
-                        if node.parent == nothing
+                        if node.parent === nothing
                             expr =
                                 model.ext[:expansions][node][name][i] -
                                 sp.ext[:options][name][7]
@@ -306,7 +306,7 @@ function build_master(
                     sp.ext[:all_vars][Symbol(string(name, "_cumulative"))] =
                         copy(expr)
                 elseif sp.ext[:options][name][1] == :state
-                    if node.parent == nothing
+                    if node.parent === nothing
                         expr =
                             model.ext[:expansions][node][name] -
                             sp.ext[:options][name][7]
@@ -467,10 +467,10 @@ function build_master(
     end
     objective_fn = objective_function(model) * remain
 
-    for i in 1:length(risk_objectives)
+    for i in eachindex(risk_objectives)
         objective_fn += risk_objectives[i] * risk[i].λ
-        if risk[i].bound != nothing
-            if risk[i].penalty != nothing
+        if risk[i].bound !== nothing
+            if risk[i].penalty !== nothing
                 surplus = @variable(model)
                 set_lower_bound(surplus, 0)
                 @constraint(

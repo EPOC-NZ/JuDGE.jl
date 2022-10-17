@@ -13,7 +13,7 @@ function newsvendor_regret(;
     CVaR = RiskNeutral(),
     mytree = nothing,
 )
-    if mytree == nothing
+    if mytree === nothing
         mytree = narytree(depth, length(demands))
     end
 

@@ -124,7 +124,7 @@ function cutting_stock(;
             end
         end
 
-        if index != nothing
+        if index !== nothing
             temp = index.coeffs[:made]
 
             branch1 = JuDGE.BranchConstraint(

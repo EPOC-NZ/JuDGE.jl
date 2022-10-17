@@ -162,13 +162,13 @@ function build_deteq(
     risk_objectives = AffExpr[]
     remain = 1.0
     if typeof(risk) == Risk
-        if (risk.α == 1.0 || risk.λ == 0.0) && risk.bound == nothing
+        if (risk.α == 1.0 || risk.λ == 0.0) && risk.bound === nothing
             risk = []
         else
             risk = [risk]
         end
     end
-    for i in 1:length(risk)
+    for i in eachindex(risk)
         risk_objective = AffExpr(0.0)
         eta = @variable(model)
         for leaf in leafs
@@ -176,7 +176,7 @@ function build_deteq(
             w = @variable(model)
             set_lower_bound(v, 0.0)
             set_lower_bound(w, 0.0)
-            if risk[i].offset == nothing
+            if risk[i].offset === nothing
                 @constraint(model, v >= eta - scen_var[leaf])
                 @constraint(model, w >= scen_var[leaf] - eta)
                 add_to_expression!(
@@ -417,7 +417,7 @@ function build_deteq(
                         string(name) * "[" * string(key) * "]"
                 end
             end
-            if sp.ext[:options][name][5] != nothing
+            if sp.ext[:options][name][5] !== nothing
                 if typeof(exps) <: AbstractArray
                     for index in get_keys(exps)
                         key = key_to_tuple(index)
@@ -433,7 +433,7 @@ function build_deteq(
                     )
                 end
             end
-            if sp.ext[:options][name][6] != nothing
+            if sp.ext[:options][name][6] !== nothing
                 if typeof(exps) <: AbstractArray
                     for index in get_keys(exps)
                         key = key_to_tuple(index)
@@ -527,7 +527,7 @@ function build_deteq(
                     model.ext[:all_vars][node][Symbol("$(name)_cumulative")] =
                         copy(expr)
                 elseif sp.ext[:options][name][1] == :state
-                    if node.parent == nothing
+                    if node.parent === nothing
                         expr =
                             model.ext[:master_vars][node][name] -
                             sp.ext[:options][name][7]
@@ -585,7 +585,7 @@ function build_deteq(
                             "$(name)_cumulative",
                         )][key] = copy(expr)
                     elseif sp.ext[:options][name][1] == :state
-                        if node.parent == nothing
+                        if node.parent === nothing
                             expr =
                                 model.ext[:master_vars][node][name][key] -
                                 sp.ext[:options][name][7]
@@ -666,10 +666,10 @@ function build_deteq(
     end
     objective_fn = objective_function(model) * remain
 
-    for i in 1:length(risk_objectives)
+    for i in eachindex(risk_objectives)
         objective_fn += risk_objectives[i] * risk[i].λ
-        if risk[i].bound != nothing
-            if risk[i].penalty != nothing
+        if risk[i].bound !== nothing
+            if risk[i].penalty !== nothing
                 surplus = @variable(model)
                 set_lower_bound(surplus, 0)
                 @constraint(
@@ -785,11 +785,11 @@ function set_policy!(
 
         for (name, var) in deteq.problem.ext[:master_vars][node]
             var2 =
-                node2 == nothing ? nothing :
+                node2 === nothing ? nothing :
                 deteq2.problem.ext[:master_vars][node2][name]
             if typeof(var) <: Dict
                 for i in keys(var)
-                    if var2 != nothing
+                    if var2 !== nothing
                         val2 = JuMP.value(var2[i])
                         if is_integer(var[i]) || is_binary(var[i])
                             val2 = round(val2)
@@ -798,7 +798,7 @@ function set_policy!(
                     end
                 end
             elseif isa(var, VariableRef)
-                if var2 != nothing
+                if var2 !== nothing
                     val2 = JuMP.value(var2)
                     if is_integer(var) || is_binary(var)
                         val2 = round(val2)

@@ -173,7 +173,7 @@ function set_banned_variables!(jmodel::JuDGEModel; remove_all = false)
                 set_lower_bound(col.var, 0.0)
                 if !remove_all
                     for branch in jmodel.ext[:branches]
-                        if branch.filter != nothing
+                        if branch.filter !== nothing
                             if branch.filter(col) == :ban
                                 set_upper_bound(col.var, 0.0)
                                 break
@@ -399,7 +399,7 @@ function branch_and_price(
 
         push!(model.master_problem.ext[:log], copy(model.log))
 
-        if bp_callback != nothing
+        if bp_callback !== nothing
             (termination, search) =
                 bp_callback(termination, search, model.master_problem.ext[:log])
         end
@@ -435,7 +435,7 @@ function branch_and_price(
                 println("\nAttempting to branch.")
             end
             branches = branch_method(model, termination.inttol)
-            if branches != nothing && length(branches) > 0
+            if branches !== nothing && length(branches) > 0
                 if verbose > 0
                     println(
                         "Adding " *

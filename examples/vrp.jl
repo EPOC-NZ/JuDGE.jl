@@ -196,7 +196,7 @@ function VRP(;
         tree = jmodel.tree
 
         branches = JuDGE.variable_branch(jmodel, inttol)
-        if branches != nothing
+        if branches !== nothing
             return branches
         end
 

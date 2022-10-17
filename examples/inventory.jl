@@ -17,7 +17,7 @@ function inventory(;
 )
     mytree = narytree(depth, degree)
 
-    if price_array == nothing
+    if price_array === nothing
         Random.seed!(1000)
         price_array = rand(length(collect(mytree)))
     end
@@ -98,7 +98,7 @@ function inventory(;
             graph = Dict{Symbol,Any}()
             graph[:x] = []
             graph[:y] = []
-            for i in 1:length(history)
+            for i in eachindex(history)
                 node = history[i]
                 push!(graph[:x], JuDGE.depth(node) + 1)
                 push!(graph[:y], solution[node][:stock_master])
@@ -112,7 +112,7 @@ function inventory(;
             graph = Dict{Symbol,Any}()
             graph[:x] = []
             graph[:y] = []
-            for i in 1:length(history)
+            for i in eachindex(history)
                 node = history[i]
                 push!(graph[:x], JuDGE.depth(node) + 1)
                 push!(graph[:y], solution[node][:prices])

@@ -11,7 +11,7 @@ function transportation(; view_file = false)
     mytree = narytree(5, 2)
 
     function invest_supply_cost(node)
-        if node.parent == nothing
+        if node.parent === nothing
             return Dict(zip(supply_nodes, [1.0, 2.0]))
         else
             p = node.parent
@@ -28,7 +28,7 @@ function transportation(; view_file = false)
     end
 
     function invest_arc_cost(node)
-        if node.parent == nothing
+        if node.parent === nothing
             temp = []
             for i in supply_nodes
                 for j in demand_nodes
@@ -51,7 +51,7 @@ function transportation(; view_file = false)
     end
 
     function demand(node)
-        if node.parent == nothing
+        if node.parent === nothing
             return d_dict
         else
             p = node.parent
@@ -87,8 +87,8 @@ function transportation(; view_file = false)
     d_dict = Dict(zip(demand_nodes, d))
 
     c_dict = Dict()
-    for i in 1:length(supply_nodes)
-        for j in 1:length(demand_nodes)
+    for i in eachindex(supply_nodes)
+        for j in eachindex(demand_nodes)
             c_dict[supply_nodes[i], demand_nodes[j]] = c[i, j]
         end
     end

@@ -392,9 +392,9 @@ function add_column(
         sol,
     )
 
-    if branches != nothing
+    if branches !== nothing
         for b in branches
-            if b.filter != nothing && b.filter(column) == :ban
+            if b.filter !== nothing && b.filter(column) == :ban
                 set_upper_bound(column.var, 0.0)
                 println("New column banned on current branch")
                 break
@@ -504,7 +504,7 @@ function solve(
     nodes = collect(judge.tree)
     exit_flag = nothing
     no_int_count = 0
-    if optimizer_attributes != nothing
+    if optimizer_attributes !== nothing
         optimizer_attributes(judge, false, true)
     end
 
@@ -530,7 +530,7 @@ function solve(
         return nothing
     end
 
-    if blocks == nothing
+    if blocks === nothing
         blocks = [nodes]
     end
 
@@ -568,13 +568,13 @@ function solve(
             skip_counter -= 1
             for n in skip_list
                 index = findfirst(x -> x == n, nodes2)
-                if index != nothing
+                if index !== nothing
                     deleteat!(nodes2, index)
                 end
             end
         end
         # perform the main iterations
-        for i in 1:length(nodes2)
+        for i in eachindex(nodes2)
             node = nodes2[i]
             sp = judge.sub_problems[node]
             updateduals(judge.master_problem, sp, node, status, current.iter)
@@ -673,7 +673,7 @@ function solve(
             frac = fractionalcount(judge, termination.inttol)
             obj = objective_value(judge.master_problem)
             if frac == 0
-                if heuristic != nothing && heuristicobj > obj
+                if heuristic !== nothing && heuristicobj > obj
                     if heuristic(judge) < 0.0 &&
                        termination.allow_frac ∉
                        [:first_fractional, :no_binary_solve]
@@ -728,7 +728,7 @@ function solve(
                     verbose,
                 )
             end
-            if heuristic != nothing
+            if heuristic !== nothing
                 if heuristic(judge) < 0.0 &&
                    termination.allow_frac ∉
                    [:first_fractional, :no_binary_solve]
@@ -776,7 +776,7 @@ function solve(
                 mp_callback,
                 verbose,
             )
-            if heuristic != nothing && heuristicobj > judge.bounds.UB
+            if heuristic !== nothing && heuristicobj > judge.bounds.UB
                 if heuristic(judge) < 0.0
                     current = solve_master_binary(
                         judge,
@@ -804,7 +804,7 @@ function solve(
             no_int_count = 0
         end
 
-        if optimizer_attributes == nothing
+        if optimizer_attributes === nothing
             if block == 0 && num_var == num_variables(judge.master_problem)
                 if length(nodes2) == length(nodes)
                     solve_master_binary(
@@ -1050,7 +1050,7 @@ function fix_expansions(jmodel::JuDGEModel, force_match::Bool)
                     value = 0.0
                     if sp.ext[:options][name][1] == :state
                         prev = node.parent
-                        if prev == nothing
+                        if prev === nothing
                             var3 =
                                 jmodel.master_problem.ext[:expansions][node][name][i]
                             value = JuMP.value(var3) - sp.ext[:options][name][7]
@@ -1114,7 +1114,7 @@ function fix_expansions(jmodel::JuDGEModel, force_match::Bool)
                 value = 0.0
                 if sp.ext[:options][name][1] == :state
                     prev = node.parent
-                    if prev == nothing
+                    if prev === nothing
                         var3 =
                             jmodel.master_problem.ext[:expansions][node][name]
                         value = JuMP.value(var3) - sp.ext[:options][name][7]
@@ -1230,7 +1230,7 @@ function set_policy!(
         i,
         rounded::Bool,
     )
-        if var2 != nothing
+        if var2 !== nothing
             if rounded
                 if i == 0
                     val2 = round(JuMP.value(var2))
@@ -1255,7 +1255,7 @@ function set_policy!(
             missing_node = false
             for n in hist
                 if haskey(mapping, n)
-                    if val == nothing
+                    if val === nothing
                         val = 0.0
                     end
 
@@ -1283,7 +1283,7 @@ function set_policy!(
                 val = nothing
             end
         elseif options[1] == :state
-            if node.parent != nothing
+            if node.parent !== nothing
                 if haskey(mapping, node) && haskey(mapping, node.parent)
                     v =
                         i == 0 ?
@@ -1324,7 +1324,7 @@ function set_policy!(
 
         bc = nothing
 
-        if val != nothing
+        if val !== nothing
             if haskey(slacks, 1) || haskey(slacks, 2)
                 if !haskey(slacks, 2)
                     bc = BranchConstraint(sp_var, :le, val, node)
@@ -1387,7 +1387,7 @@ function set_policy!(
 
         for (name, var) in jmodel.master_problem.ext[:expansions][node]
             var2 =
-                node2 == nothing ? nothing :
+                node2 === nothing ? nothing :
                 jmodel2.master_problem.ext[:expansions][node2][name]
             options = jmodel.sub_problems[jmodel.tree].ext[:options][name]
             i_min = max(1, depth(node) - options[3] - options[2] + 2)
@@ -1414,7 +1414,7 @@ function set_policy!(
                             i,
                             false,
                         )
-                        if bc != nothing
+                        if bc !== nothing
                             push!(bcs, bc)
                         end
                     end
@@ -1430,7 +1430,7 @@ function set_policy!(
                         0,
                         false,
                     )
-                    if bc != nothing
+                    if bc !== nothing
                         push!(bcs, bc)
                     end
                 end
@@ -1448,7 +1448,7 @@ function set_policy!(
                             i,
                             true,
                         )
-                        if bc != nothing
+                        if bc !== nothing
                             push!(bcs, bc)
                         end
                     end
@@ -1464,7 +1464,7 @@ function set_policy!(
                         0,
                         true,
                     )
-                    if bc != nothing
+                    if bc !== nothing
                         push!(bcs, bc)
                     end
                 end

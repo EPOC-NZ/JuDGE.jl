@@ -86,7 +86,7 @@ function Risk(
     if α <= 0.0 || α > 1.0
         error("α must be >0 and <=1")
     end
-    if bound == nothing
+    if bound === nothing
         error("Risk constraint cannot be created without setting a bound")
     end
     return Risk(0.0, α, offset, bound, penalty)

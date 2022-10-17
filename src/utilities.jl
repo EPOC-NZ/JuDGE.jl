@@ -59,7 +59,7 @@ function get_info(x::VariableRef)
         fixed_value_local = fix_value(x)
     end
 
-    if start_value(x) != nothing
+    if start_value(x) !== nothing
         has_start_local = true
         start_value_local = start_value(x)
     end
@@ -254,11 +254,11 @@ function compute_objval(
             risk = [risk]
         end
     end
-    for i in 1:length(risk)
+    for i in eachindex(risk)
         EV_weight -= risk[i].λ
         so = scenario_objs
-        if risk[i].offset != nothing
-            for j in 1:length(so)
+        if risk[i].offset !== nothing
+            for j in eachindex(so)
                 so[j] =
                     (so[j][1], so[j][2] - risk[i].offset[so[j][3]], so[j][3])
             end
@@ -306,7 +306,7 @@ function get_risk_probs(
         )
     end
 
-    try
+    if has_duals(m)
         π = Dict{Leaf,Float64}()
         leafnodes = JuDGE.get_leafnodes(model.tree)
         if typeof(model) == JuDGEModel
@@ -331,7 +331,7 @@ function get_risk_probs(
 
         if mode == :conditional
             for node in nodes
-                if node.parent != nothing && pr[node.parent] > 0
+                if node.parent !== nothing && pr[node.parent] > 0
                     pr[node] /= pr[node.parent]
                 else
                     delete!(pr, node)
@@ -341,7 +341,7 @@ function get_risk_probs(
         else
             return pr
         end
-    catch
+    else
         @warn(
             "Dual variables not present; computing approximate probabilities."
         )
@@ -398,11 +398,11 @@ function compute_risk_probs(
             risk = [risk]
         end
     end
-    for i in 1:length(risk)
+    for i in eachindex(risk)
         EV_weight -= risk[i].λ
         so = copy(scenario_objs)
-        if risk[i].offset != nothing
-            for j in 1:length(so)
+        if risk[i].offset !== nothing
+            for j in eachindex(so)
                 so[j] =
                     (so[j][1], so[j][2] - risk[i].offset[so[j][3]], so[j][3])
             end
@@ -425,7 +425,7 @@ function compute_risk_probs(
     end
 
     node = collect(keys(probabilities))[1]
-    while node.parent != nothing
+    while node.parent !== nothing
         node = node.parent
     end
     nodes = reverse(collect(node))
@@ -441,7 +441,7 @@ function compute_risk_probs(
 
     if mode == :conditional
         for node in nodes
-            if node.parent != nothing && pr[node.parent] > 0.0
+            if node.parent !== nothing && pr[node.parent] > 0.0
                 pr[node] /= pr[node.parent]
             else
                 delete!(pr, node)
@@ -866,7 +866,7 @@ function scenarios_CDF(model::Union{JuDGEModel,DetEqModel}; tol::Float64 = 1e-8)
     sort!(scenobj)
 
     total = 0.0
-    for i in 1:length(scenobj)
+    for i in eachindex(scenobj)
         total += scenobj[i][2]
         scenobj[i] = (scenobj[i][1], total)
     end
@@ -875,7 +875,7 @@ function scenarios_CDF(model::Union{JuDGEModel,DetEqModel}; tol::Float64 = 1e-8)
 
     prev = 0.0
     prev_obj = -Inf
-    for i in 1:length(scenobj)
+    for i in eachindex(scenobj)
         if i < length(scenobj) && scenobj[i+1][1] - scenobj[i][1] < tol
             continue
         end

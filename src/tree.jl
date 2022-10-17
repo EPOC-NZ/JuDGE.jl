@@ -148,7 +148,7 @@ function Base.show(io::IO, tree::AbstractTree)
 end
 
 function getID(node::AbstractTree)
-    if node.ID == nothing
+    if node.ID === nothing
         return node
     else
         return node.ID
@@ -287,7 +287,7 @@ function visualize_tree(
         if data_from_original
             node = getID(node)
         end
-        if skip_root && node.parent == nothing
+        if skip_root && node.parent === nothing
             return
         end
         for sym in keys(data[node])
@@ -432,7 +432,7 @@ function visualize_tree(
         [1.0, 0.24, 0.22],
     ]
 
-    if scale_edges == nothing
+    if scale_edges === nothing
         if typeof(some_tree) == Leaf
             scale_edges = 1.0
         else
@@ -464,7 +464,7 @@ function visualize_tree(
         get_id[node] = index
         node_json(node)
         parent = node.parent
-        if parent != nothing && (!skip_root || parent.parent != nothing)
+        if parent !== nothing && (!skip_root || parent.parent !== nothing)
             arcs *= arc_json(node, parent)
         end
         index += 1
@@ -551,7 +551,7 @@ function visualize_tree(
     c = read(joinpath(dirname(@__DIR__), "visualise", "colors.js"), String)
 
     s = replace(replace(s, "#DATA#" => adata), "#COLORS#" => c)
-    if custom != nothing
+    if custom !== nothing
         temp = ""
         for cf in values(custom)
             temp *= read(cf[3], String) * "\n"
@@ -825,7 +825,7 @@ Given `tree`, this function returns the history back up to the root node of `tre
 """
 function history(tree::T where {T<:AbstractTree})
     function helper(state, subtree)
-        if subtree.parent == nothing
+        if subtree.parent === nothing
             push!(state, subtree)
             return state
         else
@@ -839,7 +839,7 @@ end
 
 function history2(tree::T where {T<:AbstractTree})
     function helper(state, subtree)
-        if subtree.parent == nothing
+        if subtree.parent === nothing
             state = "1" * state
             return state
         else
@@ -969,7 +969,7 @@ function get_scenarios(tree::AbstractTree)
 
     trees = AbstractTree[]
 
-    for i in 1:length(scenarios)
+    for i in eachindex(scenarios)
         t = Leaf()
         t.ID = scenarios[i][1]
         t.name = t.ID.name
@@ -1021,7 +1021,7 @@ function save_tree_to_file(tree::AbstractTree, filename::String)
     f = open(filename, "w")
     println(f, "n,p")
     for n in nodes
-        if parent(n) == nothing
+        if parent(n) === nothing
             println(f, n.name * "," * "-")
         else
             println(f, n.name * "," * n.parent.name)
@@ -1106,7 +1106,7 @@ function tree_from_nodes(nodes::Vector{Any})
             output = Leaf()
         else
             v = Vector{AbstractTree}()
-            for i in 2:length(node)
+            for i in 2:lastindex(node)
                 push!(v, groupnode(node[i], prob, prev * node[1]))
             end
             output = Tree(v)
@@ -1153,7 +1153,7 @@ function tree_from_file(filename::String)
             if a[1] != "n" || a[2] != "p"
                 error("First row of tree file should be \"n,p,...\"")
             end
-            for i in 3:length(a)
+            for i in 3:lastindex(a)
                 push!(headers, Symbol(a[i]))
                 data[Symbol(a[i])] = Dict{Node,Float64}()
                 data2[Symbol(a[i])] = Dict{AbstractTree,Float64}()
@@ -1182,7 +1182,7 @@ function tree_from_file(filename::String)
             if (string)(a[2]) != "-"
                 push!(nodes[(string)(a[2])].children, nodes[(string)(a[1])])
             end
-            for i in 3:length(a)
+            for i in 3:lastindex(a)
                 data[headers[i-2]][nodes[(string)(a[1])]] = parse(Float64, a[i])
             end
         end
@@ -1292,7 +1292,7 @@ function append_expected_branches(tree::AbstractTree)
     leafnodes = get_leafnodes(tree)
 
     dpth = depth(leafnodes[1])
-    for i in 2:length(leafnodes)
+    for i in 2:lastindex(leafnodes)
         if dpth != depth(leafnodes[i])
             @error("All leaf nodes must have same depth.")
         end
@@ -1325,7 +1325,7 @@ function refine_tree(
     cond_prob = Dict{AbstractTree,Float64}()
     for node in collect(newtree)
         if JuDGE.depth(node) <= dpth
-            if node.parent == nothing || length(node.parent.children) == 1
+            if node.parent === nothing || length(node.parent.children) == 1
                 cond_prob[node] = 1.0
             elseif node != node.parent.children[end]
                 cond_prob[node] =
