@@ -1229,10 +1229,16 @@ function run_file(filename)
     end
 end
 
-function overprint(str)
-    print("\e[2K")
-    print("\e[1G")
-    return print(str)
+function overprint(str; hpos = nothing)
+    if hpos !== nothing
+        print("\e[$(hpos)G")
+        print("\e[0K")
+    else
+        print("\e[1G")
+        print("\e[2K")
+    end
+    print(str)
+    return
 end
 
 function printleft(str)

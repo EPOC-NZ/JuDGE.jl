@@ -64,7 +64,7 @@ function DetEqModel(
     perfect_foresight = false,
 )
     println("")
-    println(
+    @info(
         "Establishing deterministic equivalent model for tree: " * string(tree),
     )
     if typeof(probabilities) <: Function
@@ -78,21 +78,29 @@ function DetEqModel(
 
     nodes = collect(tree)
 
-    sub_problems = Dict(i => sub_problem_builder(i) for i in nodes)
+    sub_problems = Dict{AbstractTree,JuMP.Model}()
+    @info("Building JuMP Model for node ")
+    print("\e[F")
+    for i in nodes
+        overprint("$(i.name)", hpos = 38)
+        sub_problems[i] = sub_problem_builder(getID(i))
+    end
+    overprint("s...Complete\n", hpos = 28)
 
     if check
-        print("Checking sub-problem format...")
+        @info "Checking sub-problem format..."
+        print("\e[F")
         check_specification_is_legal(sub_problems)
-        println("Passed")
+        overprint("Complete\n", hpos = 39)
     else
-        println("Skipping checks of sub-problem format")
-    end
-    if typeof(sub_problem_builder) <: Function
-        JuDGE.scale_objectives(tree, sub_problems, discount_factor)
+        @info "Skipping checks of sub-problem format"
     end
 
+    JuDGE.scale_objectives(tree, sub_problems, discount_factor)
+
     if !perfect_foresight
-        print("Building deterministic equivalent problem...")
+        @info("Building deterministic equivalent problem...")
+        print("\e[F")
         problem = build_deteq(
             sub_problems,
             tree,
@@ -102,15 +110,17 @@ function DetEqModel(
             risk,
             sideconstraints,
         )
-        println("Complete")
+        overprint("Complete\n", hpos = 53)
         return DetEqModel(problem, tree, probabilities, risk)
     else
         scenarios = Dict{AbstractTree,DetEqModel}()
         pr = Dict{AbstractTree,Float64}()
-        @info "Building deterministic equivalent problems"
+        @info "Building deterministic equivalent problem for scenario given by node "
+        print("\e[F")
         scen_trees = get_scenarios(tree)
         for t in scen_trees
             leaf = getID(get_leafnodes(t)[1])
+            overprint("$(leaf.name)", hpos = 78)
             sps = Dict(i => sub_problems[getID(i)] for i in collect(t))
             probs = Dict(i => 1.0 for i in collect(t))
             problem = build_deteq(
@@ -125,7 +135,7 @@ function DetEqModel(
             scenarios[leaf] = DetEqModel(problem, t, probs, risk)
             pr[leaf] = probabilities[leaf]
         end
-        @info "Deterministic equivalent problems built"
+        overprint("s...Complete\n", hpos = 50)
         return scenarios, pr
     end
 end
@@ -703,12 +713,12 @@ Solve a determinisitc equivalent model.
     JuDGE.solve(deteq)
 """
 function solve(deteq::DetEqModel)
-    print("Solving deterministic equivalent formulation...")
+    @info("Solving deterministic equivalent formulation")
     optimize!(deteq.problem)
     if termination_status(deteq.problem) == MOI.OPTIMAL
-        println("Solved.")
+        @info("Solved.")
     else
-        println("Not solved: " * string(termination_status(deteq.problem)))
+        @info("Not solved: " * string(termination_status(deteq.problem)))
     end
 end
 

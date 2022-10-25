@@ -143,15 +143,25 @@ function JuDGEModel(
     end
 
     nodes = collect(tree)
-    sub_problems = Dict(i => sub_problem_builder(getID(i)) for i in nodes)
+
+    sub_problems = Dict{AbstractTree,JuMP.Model}()
+    @info("Building JuMP Model for node ")
+    print("\e[F")
+    for i in nodes
+        overprint("$(i.name)", hpos = 38)
+        sub_problems[i] = sub_problem_builder(getID(i))
+    end
+    overprint("s...Complete\n", hpos = 28)
 
     if check
-        @info "Checking sub-problem format"
+        @info "Checking sub-problem format..."
+        print("\e[F")
         check_specification_is_legal(sub_problems)
-        @info "Sub-problem format is valid"
+        overprint("Complete\n", hpos = 39)
     else
         @info "Skipping checks of sub-problem format"
     end
+
     scale_objectives(tree, sub_problems, discount_factor)
 
     for sp in values(sub_problems)
@@ -159,7 +169,8 @@ function JuDGEModel(
     end
 
     if !perfect_foresight
-        @info "Building master problem"
+        @info "Building master problem..."
+        print("\e[F")
         master_problem = build_master(
             sub_problems,
             tree,
@@ -169,7 +180,7 @@ function JuDGEModel(
             risk,
             sideconstraints,
         )
-        @info "Master problem built"
+        overprint("Complete\n", hpos = 35)
         ext = Dict{Symbol,Any}()
         ext[:branches] = Branch[]
         ext[:optimizer_settings] = Dict{Symbol,Any}()
@@ -190,10 +201,12 @@ function JuDGEModel(
     else
         scenarios = Dict{AbstractTree,JuDGEModel}()
         pr = Dict{AbstractTree,Float64}()
-        @info "Building master problems"
+        @info "Building master problem for scenario given by node "
+        print("\e[F")
         scen_trees = get_scenarios(tree)
         for t in scen_trees
             leaf = getID(get_leafnodes(t)[1])
+            overprint("$(leaf.name)", hpos = 60)
             sps = Dict(i => sub_problems[getID(i)] for i in collect(t))
             probs = Dict(i => 1.0 for i in collect(t))
             master_problem = build_master(
@@ -223,7 +236,7 @@ function JuDGEModel(
             )
             pr[leaf] = probabilities[leaf]
         end
-        @info "Master problems built"
+        overprint("s...Complete\n", hpos = 32)
         return scenarios, pr
     end
 end
