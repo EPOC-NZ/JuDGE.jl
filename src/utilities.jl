@@ -31,6 +31,20 @@ function copy_variable!(toModel, variable::JuMP.VariableRef, f)
     )
 end
 
+function Base.map(f, hello::JuMP.Containers.DenseAxisArray)
+    return JuMP.Containers.DenseAxisArray(
+        map(f, hello.data),
+        deepcopy(hello.axes),
+        deepcopy(hello.lookup),
+    )
+end
+
+function Base.map(f, hello::JuMP.Containers.SparseAxisArray)
+    return JuMP.Containers.SparseAxisArray(
+        Dict(i => f(hello[i]) for i in keys(hello.data)),
+    )
+end
+
 # constuct variable info object for a single variable
 function get_info(x::VariableRef)
     has_lb_local = false
@@ -212,6 +226,41 @@ function clear_expansions(a::Dict{AbstractTree,Dict{Symbol,Any}})
         break
     end
     return assign
+end
+
+function scale_objectives(
+    tree::T where {T<:AbstractTree},
+    sub_problems,
+    discount_factor::Float64,
+)
+    if discount_factor <= 0.0 || discount_factor > 1.0
+        error(
+            "discount_factor must be greater than 0.0 and less than or equal to 1.0",
+        )
+    end
+
+    for (node, sp) in sub_problems
+        if !haskey(sp.ext, :capitalcosts)
+            sp.ext[:capitalcosts] = Dict()
+            sp.ext[:capitalcosts][:constant] = 0
+        end
+        if !haskey(sp.ext, :ongoingcosts)
+            sp.ext[:ongoingcosts] = Dict()
+            sp.ext[:ongoingcosts][:constant] = 0
+        end
+
+        sp.ext[:objective] = @variable(sp, obj)
+        sp.ext[:objective_con] =
+            @constraint(sp, sp.ext[:objective] - objective_function(sp) == 0)
+
+        @objective(sp, Min, 0.0)
+        set_normalized_coefficient(
+            sp.ext[:objective_con],
+            sp.ext[:objective],
+            1.0 / (discount_factor^depth(node)),
+        )
+    end
+    return nothing
 end
 
 """
