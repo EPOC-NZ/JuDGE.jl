@@ -594,16 +594,16 @@ function solution_to_dictionary(
                     solution[node][sym][strkey] = vals[key]
                 end
             elseif typeof(vars) <: Dict
-                skip = false
-                for v in values(vars)
-                    if typeof(v) ∉ [VariableRef, AffExpr]
-                        skip = true
-                    end
-                    break
-                end
-                if skip
-                    continue
-                end
+                # skip = false
+                # for v in values(vars)
+                #     if typeof(v) ∉ [VariableRef, AffExpr]
+                #         skip = true
+                #     end
+                #     break
+                # end
+                # if skip
+                #     continue
+                # end
                 if sym ∉ keys(solution[node])
                     solution[node][sym] = Dict{String,Float64}()
                 end
