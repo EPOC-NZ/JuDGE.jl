@@ -339,7 +339,7 @@ Returns a dictionary mapping the nodes in a tree to a probability (either margin
 
 `model` is a JuDGE or DetEq model for which we wish to find the risk-adjusted probabilities for each scenario.
 
-`mode` is either `:marginal` or `:conditional`.
+`mode` is either `:marginal`, `:conditional` or `:leaf`.
 """
 function get_risk_probs(
     model::Union{JuDGEModel,DetEqModel},
@@ -349,9 +349,9 @@ function get_risk_probs(
 
     cons = all_constraints(m, AffExpr, MOI.EqualTo{Float64})
 
-    if mode ∉ [:marginal, :conditional]
+    if mode ∉ [:marginal, :conditional, :leaf]
         error(
-            "Invalid probability mode. mode must be :conditional or :marginal",
+            "Invalid probability mode. mode must be :conditional, :marginal or :leaf",
         )
     end
 
@@ -366,6 +366,10 @@ function get_risk_probs(
             for leaf in leafnodes
                 π[leaf] = -dual(model.problem.ext[:scenario_con][leaf])
             end
+        end
+
+        if mode == :leaf
+            return π
         end
 
         pr = Dict{AbstractTree,Float64}()
@@ -386,10 +390,8 @@ function get_risk_probs(
                     delete!(pr, node)
                 end
             end
-            return pr
-        else
-            return pr
         end
+        return pr
     else
         @warn(
             "Dual variables not present; computing approximate probabilities."
@@ -423,7 +425,7 @@ Note that this method is only approximate and may not be able to provide useful 
 
 `risk` is a `JuDGE.Risk` object, or a vector of such objects.
 
-`mode` is either `:marginal` or `:conditional`.
+`mode` is either `:marginal`, `:conditional` or `:leaf`.
 """
 function compute_risk_probs(
     scenarios::Dict{Leaf,Float64},
@@ -473,6 +475,10 @@ function compute_risk_probs(
         riskprob[i] += EV_weight * probabilities[i]
     end
 
+    if mode == :leaf
+        return riskprob
+    end
+
     node = collect(keys(probabilities))[1]
     while node.parent !== nothing
         node = node.parent
@@ -501,7 +507,7 @@ function compute_risk_probs(
         return pr
     else
         error(
-            "Invalid probability mode. mode must be :conditional or :marginal",
+            "Invalid probability mode. mode must be :conditional, :marginal or :leaf",
         )
     end
 end
@@ -568,16 +574,16 @@ function solution_to_dictionary(
             if typeof(vars) == VariableRef
                 solution[node][sym] = JuMP.value(vars)
             elseif typeof(vars) <: AbstractArray
-                skip = false
-                for v in vars
-                    if typeof(v) != VariableRef
-                        skip = true
-                    end
-                    break
-                end
-                if skip
-                    continue
-                end
+                # skip = false
+                # for v in vars
+                #     if typeof(v) != VariableRef
+                #         skip = true
+                #     end
+                #     break
+                # end
+                # if skip
+                #     continue
+                # end
                 if sym ∉ keys(solution[node])
                     solution[node][sym] = Dict{String,Float64}()
                 end
