@@ -562,18 +562,31 @@ function solution_to_dictionary(
     model::Union{JuDGEModel,DetEqModel};
     prefix::String = "",
 )
+    function judge_value(var::VariableRef)
+        if var.model == model.master_problem
+            return model.ext[:best_integer_solution][var]
+        else
+            return JuMP.value(var)
+        end
+    end
+    function jvalue(var::VariableRef)
+        return typeof(model) == JuDGEModel &&
+               haskey(model.ext, :best_integer_solution) ? judge_value(var) :
+               JuMP.value(var)
+    end
+
     function helper(node::AbstractTree, solution::T where {T<:Dict})
         solution[node] = Dict{Symbol,Any}()
 
         var_groups =
             typeof(model) == DetEqModel ? model.problem.ext[:all_vars][node] :
-            model.sub_problems[node].ext[:all_vars]
+            model.ext[:all_vars][node]
 
         for (var_group, vars) in var_groups
             sym = Symbol(prefix * string(var_group))
             if typeof(vars) == VariableRef
-                solution[node][sym] = JuMP.value(vars)
-            elseif typeof(vars) <: AbstractArray
+                solution[node][sym] = jvalue(vars)
+            elseif typeof(vars) <: AbstractArray{VariableRef}
                 # skip = false
                 # for v in vars
                 #     if typeof(v) != VariableRef
@@ -587,7 +600,8 @@ function solution_to_dictionary(
                 if sym ∉ keys(solution[node])
                     solution[node][sym] = Dict{String,Float64}()
                 end
-                vals = JuMP.value.(vars)
+
+                vals = jvalue.(vars)
 
                 for key in get_keys(vals)
                     strkey = key_to_string(key_to_tuple(key))
@@ -609,8 +623,12 @@ function solution_to_dictionary(
                 end
 
                 for key in keys(vars)
-                    strkey = key_to_string(key_to_tuple(key))
-                    solution[node][sym][strkey] = value(vars[key])
+                    if typeof(vars[key]) == VariableRef
+                        strkey = key_to_string(key_to_tuple(key))
+                        # println(strkey)
+                        # println(vars[key])
+                        solution[node][sym][strkey] = jvalue(vars[key])
+                    end
                 end
             end
         end
@@ -621,10 +639,10 @@ function solution_to_dictionary(
             end
         elseif typeof(model) == DetEqModel
             solution[node][Symbol(prefix * "scenario_obj")] =
-                JuMP.value(model.problem.ext[:scenario_obj][node])
+                jvalue(model.problem.ext[:scenario_obj][node])
         else
             solution[node][Symbol(prefix * "scenario_obj")] =
-                JuMP.value(model.master_problem.ext[:scenprofit_var][node])
+                jvalue(model.master_problem.ext[:scenprofit_var][node])
         end
         return solution
     end
@@ -680,7 +698,7 @@ function set_starting_solution!(deteq::DetEqModel, jmodel::JuDGEModel)
                     set_start_value(
                         deteq.problem.ext[:master_vars][node][name][key],
                         JuMP.value(
-                            jmodel.master_problem.ext[:expansions][node][name][key],
+                            jmodel.master_problem.ext[:expansions][node][name][index],
                         ),
                     )
                 end
@@ -943,7 +961,7 @@ function scenarios_CDF(model::Union{JuDGEModel,DetEqModel}; tol::Float64 = 1e-8)
 end
 
 function Base.getindex(jmodel::JuDGEModel, node::AbstractTree)
-    return jmodel.sub_problems[node].ext[:all_vars]
+    return jmodel.ext[:all_vars][node]
 end
 
 function Base.getindex(deteq::DetEqModel, node::AbstractTree)

@@ -8,14 +8,14 @@ Given a solved JuDGE model, this function will write the optimal capacity expans
 decisions to the REPL.
 
 ### Required Arguments
-`jmodel` is the JuDGE model whose solution we wish to write to a file
+`jmodel` is the JuDGE model whose solution we wish to write to a file.
 
 ### Optional Arguments
 `onlynonzero` is a boolean, if set to `true` the function will only print expansions
 with a non-zero value.
 
 `inttol` is the integrality tolerance; any expansion variable value less than this
-will be treated as 0, and any value greater than 1-`inttol` will be treated as 1
+will be treated as 0, and any value greater than 1-`inttol` will be treated as 1.
 
 `format` is a function that specifies customised printing of expansion values.
 See [Tutorial 2: Formatting output](@ref) for more details.
@@ -130,14 +130,14 @@ Given a solved deterministic equivalent model, this function will write the opti
 capacity expansion decisions to the REPL.
 
 ### Required Arguments
-`deteq` is the deterministic equivalent model whose solution we wish to write to a file
+`deteq` is the deterministic equivalent model whose solution we wish to write to a file.
 
 ### Optional Arguments
 `onlynonzero` is a boolean, if set to `true` the function will only print expansions
 with a non-zero value.
 
 `inttol` is the integrality tolerance; any expansion variable value less than this
-will be treated as 0, and any value greater than 1-`inttol` will be treated as 1
+will be treated as 0, and any value greater than 1-`inttol` will be treated as 1.
 
 `format` is a function that specifies customised printing of expansion values.
 See [Tutorial 2: Formatting output](@ref) for more details.
@@ -296,28 +296,52 @@ end
 """
 	write_solution_to_file(model::Union{JuDGEModel,DetEqModel},filename::String)
 
-Given a deterministic equivalent model and a filename, this function writes the
-entire solution to a CSV.
+Given a JuDGEModel or DetEqModel and a filename, this function writes the entire solution to a CSV.
 
 ### Required Arguments
-`model` can be either the `JuDGEModel` or the `DetEqModel` whose solution we wish to write to a file
+`model` can be either the `JuDGEModel` or the `DetEqModel` whose solution we wish to write to a file.
 
-`filename` is the output filename
+`filename` is the output filename.
+
+### Optional Arguments
+`return_string` is `false` by default, but if set to `true` will return the solution output as a string.
 """
 function write_solution_to_file(
     model::Union{JuDGEModel,DetEqModel},
     filename::String,
+    return_string::Bool = false,
 )
-    file = open(filename, "w")
-
-    print(file, "node,value,variable")
-
     solution = solution_to_dictionary(model)
+
+    return write_solution_to_file(solution, filename, return_string)
+end
+
+"""
+	write_solution_to_file(solution::Dict{AbstractTree,Dict{Symbol,Any}},filename::String)
+
+Given a solution dictionary and a filename, this function writes the entire solution to a CSV.
+
+### Required Arguments
+`solution` can be created using `solution_to_dictionary` and then modified.
+
+`filename` is the output filename.
+
+### Optional Arguments
+`return_string` is `false` by default, but if set to `true` will return the solution output as a string.
+"""
+function write_solution_to_file(
+    solution::Dict{AbstractTree,Dict{Symbol,Any}},
+    filename::String,
+    return_string::Bool = false,
+)
+    io = IOBuffer()
+
+    print(io, "node,value,variable")
 
     max_indices = 0
     for node in keys(solution)
         for (name, item) in solution[node]
-            if typeof(item) != Float64
+            if !(typeof(item) <: Real)
                 for (index, value) in item
                     n = length(split(index, ","))
                     if n > max_indices
@@ -331,22 +355,22 @@ function write_solution_to_file(
 
     if max_indices > 0
         for i in 1:max_indices
-            print(file, ",i$(i)")
+            print(io, ",i$(i)")
         end
     end
-    println(file, "")
+    println(io, "")
 
     for node in keys(solution)
         for (name, item) in solution[node]
-            if typeof(item) == Float64
+            if typeof(item) <: Real
                 println(
-                    file,
+                    io,
                     node.name * "," * string(item) * "," * string(name) * ",",
                 )
             else
                 for (index, value) in item
                     println(
-                        file,
+                        io,
                         node.name *
                         "," *
                         string(value) *
@@ -360,7 +384,13 @@ function write_solution_to_file(
         end
     end
 
-    return close(file)
-end
+    output = String(take!(io))
 
-""
+    if filename != ""
+        file = open(filename, "w")
+        print(file, output)
+        close(file)
+    end
+
+    return return_string ? output : nothing
+end

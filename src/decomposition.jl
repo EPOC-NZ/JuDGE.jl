@@ -61,6 +61,7 @@ function JuDGEModel(
     new_ext = Dict{Symbol,Any}()
     new_ext[:branches] = copy(ext[:branches])
     new_ext[:optimizer_settings] = deepcopy(ext[:optimizer_settings])
+    new_ext[:all_vars] = copy(ext[:all_vars])
     return JuDGEModel(
         tree,
         master_problem,
@@ -172,14 +173,10 @@ function JuDGEModel(
 
     scale_objectives(tree, sub_problems, discount_factor)
 
-    for sp in values(sub_problems)
-        sp.ext[:all_vars] = copy(sp.obj_dict)
-    end
-
     if !perfect_foresight
         @info "Building master problem..."
         print("\e[F")
-        master_problem = build_master(
+        master_problem, all_vars = build_master(
             sub_problems,
             tree,
             probabilities,
@@ -192,6 +189,7 @@ function JuDGEModel(
         ext = Dict{Symbol,Any}()
         ext[:branches] = Branch[]
         ext[:optimizer_settings] = Dict{Symbol,Any}()
+        ext[:all_vars] = all_vars
 
         return JuDGEModel(
             tree,
@@ -217,7 +215,7 @@ function JuDGEModel(
             overprint("$(leaf.name)", hpos = 60)
             sps = Dict(i => sub_problems[getID(i)] for i in collect(t))
             probs = Dict(i => 1.0 for i in collect(t))
-            master_problem = build_master(
+            master_problem, all_vars = build_master(
                 sps,
                 t,
                 probs,
@@ -229,6 +227,8 @@ function JuDGEModel(
             ext = Dict{Symbol,Any}()
             ext[:branches] = Branch[]
             ext[:optimizer_settings] = Dict{Symbol,Any}()
+            ext[:all_vars] = all_vars
+
             scenarios[leaf] = JuDGEModel(
                 t,
                 master_problem,
@@ -289,7 +289,7 @@ function add_mixed_cover(master, sp, column)
     if !(column.node in keys(master.ext[:discrete_con]))
         master.ext[:discrete_var][column.node] = Dict{Int,VariableRef}()
         master.ext[:discrete_con][column.node] = Dict{Int,ConstraintRef}()
-        for i in 1:length(sp.ext[:discrete])
+        for i in eachindex(sp.ext[:discrete])
             master.ext[:discrete_var][column.node][i] = @variable(master)
             master.ext[:discrete_con][column.node][i] = @constraint(
                 master,
@@ -298,7 +298,7 @@ function add_mixed_cover(master, sp, column)
         end
     end
 
-    for i in 1:length(sp.ext[:discrete])
+    for i in eachindex(sp.ext[:discrete])
         set_normalized_coefficient(
             master.ext[:discrete_con][column.node][i],
             column.var,
@@ -456,12 +456,14 @@ function solve(
     current = InitialConvergenceState()
     empty!(judge.log)
     push!(judge.log, current)
-    if verbose > 0 && prune == Inf
-        @info "Solving JuDGE model for tree: " * string(judge.tree)
-        if verbose == 2
-            display(termination)
+    if verbose > 0
+        if prune == Inf
+            @info "Solving JuDGE model for tree: " * string(judge.tree)
+            if verbose == 2
+                display(termination)
+            end
+            println("")
         end
-        println("")
         println(
             "Relaxed ObjVal  |   Upper Bound   Lower Bound  |  Absolute Diff   Relative Diff  |  Fractional  |      Time     Iter",
         )
@@ -523,126 +525,192 @@ function solve(
            [MOI.INFEASIBLE_OR_UNBOUNDED, MOI.INFEASIBLE, MOI.DUAL_INFEASIBLE]
         block = 0
     end
+    try
+        while true
+            nodes2 = block <= 0 ? copy(nodes) : copy(blocks[block])
 
-    while true
-        if block <= 0
-            nodes2 = copy(nodes)
-        else
-            nodes2 = copy(blocks[block])
-        end
-        if skip_counter == 0 || length(skip_list) == length(nodes)
-            empty!(skip_list)
-            skip_counter = skip_nodes
-        else
-            skip_counter -= 1
-            for n in skip_list
-                index = findfirst(x -> x == n, nodes2)
-                if index !== nothing
-                    deleteat!(nodes2, index)
+            if skip_counter == 0 || length(skip_list) == length(nodes)
+                empty!(skip_list)
+                skip_counter = skip_nodes
+            else
+                skip_counter -= 1
+                for n in skip_list
+                    index = findfirst(x -> x == n, nodes2)
+                    if index !== nothing
+                        deleteat!(nodes2, index)
+                    end
                 end
             end
-        end
-        # perform the main iterations
-        for i in eachindex(nodes2)
-            node = nodes2[i]
-            sp = judge.sub_problems[node]
-            updateduals(judge.master_problem, sp, node, status, current.iter)
-            if verbose == 2
-                overprint(
-                    "Solving subproblem for node " *
-                    node.name *
-                    get_whitespace(node.name, i) *
-                    string(i) *
-                    "/" *
-                    string(length(nodes2)),
+            # perform the main iterations
+            for i in eachindex(nodes2)
+                node = nodes2[i]
+                sp = judge.sub_problems[node]
+                updateduals(
+                    judge.master_problem,
+                    sp,
+                    node,
+                    status,
+                    current.iter,
                 )
-            end
-
-            optimize!(sp)
-
-            if termination_status(sp) ∉
-               [MOI.OPTIMAL, MOI.INTERRUPTED, MOI.TIME_LIMIT]
                 if verbose == 2
-                    println("")
+                    overprint(
+                        "Solving subproblem for node " *
+                        node.name *
+                        get_whitespace(node.name, i) *
+                        string(i) *
+                        "/" *
+                        string(length(nodes2)),
+                    )
                 end
-                @warn(
-                    "Solve for subproblem " *
-                    node.name *
-                    " exited with status " *
-                    string(termination_status(sp))
-                )
-                exit_flag = :sp_infeasible
-                @goto terminate
-            end
-            if warm_starts
-                vars = all_variables(sp)
-                set_start_value.(vars, JuMP.value.(vars))
-            end
-        end
-        if verbose == 2
-            overprint("")
-        end
 
-        frac = 0
+                optimize!(sp)
 
-        if status ∉
-           [MOI.INFEASIBLE_OR_UNBOUNDED, MOI.INFEASIBLE, MOI.DUAL_INFEASIBLE]
-            if status != MOI.OPTIMAL
-                @warn(
-                    "Master problem did not solve to optimality: " *
-                    string(status)
-                )
-            elseif block == 0 && length(skip_list) == 0
-                getlowerbound(judge)
+                if termination_status(sp) ∉
+                   [MOI.OPTIMAL, MOI.INTERRUPTED, MOI.TIME_LIMIT]
+                    if verbose == 2
+                        println("")
+                    end
+                    @warn(
+                        "Solve for subproblem " *
+                        node.name *
+                        " exited with status " *
+                        string(termination_status(sp))
+                    )
+                    exit_flag = :sp_infeasible
+                    @goto terminate
+                end
+                # if warm_starts
+                #     vars = all_variables(sp)
+                #     solution = JuMP.value.(vars)
+                #     set_start_value.(vars, solution)
+                # end
             end
-        elseif judge.bounds.LB > -Inf
-            println("\nMaster problem is infeasible or unbounded")
-            judge.bounds.LB = Inf
-            judge.bounds.UB = Inf
-            exit_flag = :master_infeasible
-            break
-        elseif current.iter > 2
-            println("\nMaster problem is infeasible or unbounded")
-            exit_flag = :master_infeasible
-            break
-        end
+            if verbose == 2
+                overprint("")
+            end
 
-        num_var = num_variables(judge.master_problem)
-        if status ∈
-           [MOI.INFEASIBLE_OR_UNBOUNDED, MOI.INFEASIBLE, MOI.DUAL_INFEASIBLE]
-            for node in nodes2
-                create_column(node)
+            frac = 0
+
+            if status ∉ [
+                MOI.INFEASIBLE_OR_UNBOUNDED,
+                MOI.INFEASIBLE,
+                MOI.DUAL_INFEASIBLE,
+            ]
+                if status != MOI.OPTIMAL
+                    @warn(
+                        "Master problem did not solve to optimality: " *
+                        string(status)
+                    )
+                elseif block == 0 && length(skip_list) == 0
+                    getlowerbound(judge)
+                end
+            elseif judge.bounds.LB > -Inf
+                println("\nMaster problem is infeasible or unbounded")
+                judge.bounds.LB = Inf
+                judge.bounds.UB = Inf
+                exit_flag = :master_infeasible
+                break
+            elseif current.iter > 2
+                println("\nMaster problem is infeasible or unbounded")
+                exit_flag = :master_infeasible
+                break
             end
-        else
-            for node in nodes2
-                if objective_value(judge.sub_problems[node]) < -10^-10
+
+            num_var = num_variables(judge.master_problem)
+            if status ∈ [
+                MOI.INFEASIBLE_OR_UNBOUNDED,
+                MOI.INFEASIBLE,
+                MOI.DUAL_INFEASIBLE,
+            ]
+                for node in nodes2
                     create_column(node)
-                elseif skip_nodes != 0
-                    push!(skip_list, node)
+                end
+            else
+                for node in nodes2
+                    if objective_value(judge.sub_problems[node]) < -10^-10
+                        create_column(node)
+                    elseif skip_nodes != 0
+                        push!(skip_list, node)
+                    end
                 end
             end
-        end
-        if verbose == 2
-            overprint("Solving master problem")
-            optimize!(judge.master_problem)
-            overprint("")
-        else
-            optimize!(judge.master_problem)
-        end
-        status = termination_status(judge.master_problem)
-        if status == MOI.NUMERICAL_ERROR
-            println("\nMaster problem returned a MOI.NUMERICAL_ERROR")
-            exit_flag = :master_numerical_error
-            break
-        elseif status ∉ [
-            MOI.INFEASIBLE_OR_UNBOUNDED,
-            MOI.INFEASIBLE,
-            MOI.DUAL_INFEASIBLE,
-        ]
-            frac = fractionalcount(judge, termination.inttol)
-            obj = objective_value(judge.master_problem)
-            if frac == 0
-                if heuristic !== nothing && heuristicobj > obj
+            if verbose == 2
+                overprint("Solving master problem")
+                optimize!(judge.master_problem)
+                overprint("")
+            else
+                optimize!(judge.master_problem)
+            end
+            status = termination_status(judge.master_problem)
+            if status == MOI.NUMERICAL_ERROR
+                println("\nMaster problem returned a MOI.NUMERICAL_ERROR")
+                exit_flag = :master_numerical_error
+                break
+            elseif status ∉ [
+                MOI.INFEASIBLE_OR_UNBOUNDED,
+                MOI.INFEASIBLE,
+                MOI.DUAL_INFEASIBLE,
+            ]
+                frac = fractionalcount(judge, termination.inttol)
+                obj = objective_value(judge.master_problem)
+                if frac == 0
+                    if heuristic !== nothing && heuristicobj > obj
+                        if heuristic(judge) < 0.0 &&
+                           termination.allow_frac ∉
+                           [:first_fractional, :no_binary_solve]
+                            solve_master_binary(
+                                judge,
+                                initial_time,
+                                termination,
+                                warm_starts,
+                                nothing,
+                                verbose,
+                            )
+                        else
+                            optimize!(judge.master_problem)
+                        end
+                        obj = objective_value(judge.master_problem)
+                        heuristicobj = obj
+                    end
+                    judge.bounds.UB = obj
+                    update_best_integer!(judge, warm_starts)
+                    no_int_count = 0
+                else
+                    no_int_count += 1
+                end
+            else
+                block = -1
+            end
+            current = ConvergenceState(
+                obj,
+                judge.bounds.UB,
+                judge.bounds.LB,
+                time() - initial_time,
+                current.iter + 1,
+                frac,
+            )
+            if verbose > 0
+                display(current)
+            end
+            push!(judge.log, current)
+            if prune < judge.bounds.LB
+                if verbose > 0
+                    println("\nDominated by incumbent.")
+                end
+                exit_flag = :dominated
+                break
+            elseif has_converged(termination, current)
+                if frac > 0
+                    solve_master_binary(
+                        judge,
+                        initial_time,
+                        termination,
+                        warm_starts,
+                        nothing,
+                        verbose,
+                    )
+                end
+                if heuristic !== nothing
                     if heuristic(judge) < 0.0 &&
                        termination.allow_frac ∉
                        [:first_fractional, :no_binary_solve]
@@ -654,136 +722,95 @@ function solve(
                             nothing,
                             verbose,
                         )
+                        heuristicobj = judge.bounds.UB
                     else
                         optimize!(judge.master_problem)
                     end
-                    obj = objective_value(judge.master_problem)
-                    heuristicobj = obj
                 end
-                judge.bounds.UB = obj
-
-                no_int_count = 0
-            else
-                no_int_count += 1
-            end
-        else
-            block = -1
-        end
-        current = ConvergenceState(
-            obj,
-            judge.bounds.UB,
-            judge.bounds.LB,
-            time() - initial_time,
-            current.iter + 1,
-            frac,
-        )
-        if verbose > 0
-            display(current)
-        end
-        push!(judge.log, current)
-        if prune < judge.bounds.LB
-            if verbose > 0
-                println("\nDominated by incumbent.")
-            end
-            break
-        elseif has_converged(termination, current)
-            if frac > 0
-                solve_master_binary(
-                    judge,
-                    initial_time,
-                    termination,
-                    warm_starts,
-                    nothing,
-                    verbose,
-                )
-            end
-            if heuristic !== nothing
-                if heuristic(judge) < 0.0 &&
-                   termination.allow_frac ∉
-                   [:first_fractional, :no_binary_solve]
-                    solve_master_binary(
-                        judge,
-                        initial_time,
-                        termination,
-                        warm_starts,
-                        nothing,
-                        verbose,
-                    )
-                    heuristicobj = judge.bounds.UB
-                else
-                    optimize!(judge.master_problem)
-                end
-            end
-            if verbose > 0
-                println("\nConvergence criteria met.")
-            end
-            break
-        elseif termination.allow_frac == :first_fractional && frac > 0
-            if verbose > 0
-                println("\nFractional solution found.")
-            end
-            break
-        elseif (
-            (
-                max_no_int > 0 &&
-                no_int_count >= max_no_int &&
-                current.num_frac > 0
-            ) && (
-                current.rlx_abs < termination.abstol ||
-                current.rlx_rel < termination.reltol
-            )
-        ) || (
-            max_no_int < 0 &&
-            no_int_count >= -max_no_int &&
-            current.num_frac > 0
-        )
-            current = solve_master_binary(
-                judge,
-                initial_time,
-                termination,
-                warm_starts,
-                mp_callback,
-                verbose,
-            )
-            if heuristic !== nothing && heuristicobj > judge.bounds.UB
-                if heuristic(judge) < 0.0
-                    current = solve_master_binary(
-                        judge,
-                        initial_time,
-                        termination,
-                        warm_starts,
-                        mp_callback,
-                        verbose,
-                    )
-                else
-                    optimize!(judge.master_problem)
-                end
-                heuristicobj = judge.bounds.UB
-            end
-
-            if has_converged(termination, current)
                 if verbose > 0
                     println("\nConvergence criteria met.")
                 end
                 break
-            elseif termination.allow_frac == :binary_solve
-                remove_binary(judge)
-                optimize!(judge.master_problem)
-            end
-            no_int_count = 0
-        end
+            elseif termination.allow_frac == :first_fractional && frac > 0
+                if verbose > 0
+                    println("\nFractional solution found.")
+                end
+                break
+            elseif (
+                (
+                    max_no_int > 0 &&
+                    no_int_count >= max_no_int &&
+                    current.num_frac > 0
+                ) && (
+                    current.rlx_abs < termination.abstol ||
+                    current.rlx_rel < termination.reltol
+                )
+            ) || (
+                max_no_int < 0 &&
+                no_int_count >= -max_no_int &&
+                current.num_frac > 0
+            )
+                current = solve_master_binary(
+                    judge,
+                    initial_time,
+                    termination,
+                    warm_starts,
+                    mp_callback,
+                    verbose,
+                )
+                if heuristic !== nothing && heuristicobj > judge.bounds.UB
+                    if heuristic(judge) < 0.0
+                        current = solve_master_binary(
+                            judge,
+                            initial_time,
+                            termination,
+                            warm_starts,
+                            mp_callback,
+                            verbose,
+                        )
+                    else
+                        optimize!(judge.master_problem)
+                    end
+                    heuristicobj = judge.bounds.UB
+                end
 
-        if optimizer_attributes === nothing
-            if block == 0 && num_var == num_variables(judge.master_problem)
+                if has_converged(termination, current)
+                    if verbose > 0
+                        println("\nConvergence criteria met.")
+                    end
+                    break
+                elseif termination.allow_frac == :binary_solve
+                    remove_binary(judge)
+                    optimize!(judge.master_problem)
+                end
+                no_int_count = 0
+            end
+
+            if optimizer_attributes === nothing
+                if block == 0 && num_var == num_variables(judge.master_problem)
+                    if length(nodes2) == length(nodes)
+                        solve_master_binary(
+                            judge,
+                            initial_time,
+                            termination,
+                            warm_starts,
+                            nothing,
+                            verbose,
+                        )
+                        if verbose > 0
+                            println("\nStalled: exiting.")
+                        end
+                        break
+                    else
+                        skip_counter = 0
+                    end
+                end
+            elseif optimizer_attributes(
+                judge,
+                num_var == num_variables(judge.master_problem),
+                false,
+            )
                 if length(nodes2) == length(nodes)
-                    solve_master_binary(
-                        judge,
-                        initial_time,
-                        termination,
-                        warm_starts,
-                        nothing,
-                        verbose,
-                    )
                     if verbose > 0
                         println("\nStalled: exiting.")
                     end
@@ -792,24 +819,24 @@ function solve(
                     skip_counter = 0
                 end
             end
-        elseif optimizer_attributes(
-            judge,
-            num_var == num_variables(judge.master_problem),
-            false,
-        )
-            if length(nodes2) == length(nodes)
-                if verbose > 0
-                    println("\nStalled: exiting.")
-                end
-                break
+            if length(blocks) == 1
+                block = 0
             else
-                skip_counter = 0
+                block = (block + 1) % (length(blocks) + 1)
+            end
+
+            if haskey(judge.ext, :stop)
+                exit_flag = :user_skip
+                println("\nUser Interrupt")
+                break
             end
         end
-        if length(blocks) == 1
-            block = 0
+    catch ex
+        if isa(ex, InterruptException)
+            println("\nUser Interrupt")
+            exit_flag = :user_interrupt
         else
-            block = (block + 1) % (length(blocks) + 1)
+            throw(ex)
         end
     end
     @label terminate
@@ -1004,6 +1031,11 @@ function fix_expansions(jmodel::JuDGEModel, force_match::Bool)
         error("You need to first solve the decomposed model.")
     end
 
+    function jvalue(var::VariableRef)
+        return haskey(jmodel.ext, :best_integer_solution) ?
+               jmodel.ext[:best_integer_solution][var] : JuMP.value(var)
+    end
+
     for node in collect(jmodel.tree)
         sp = jmodel.sub_problems[node]
         set_objective_function(
@@ -1022,13 +1054,13 @@ function fix_expansions(jmodel::JuDGEModel, force_match::Bool)
                         if prev === nothing
                             var3 =
                                 jmodel.master_problem.ext[:expansions][node][name][i]
-                            value = JuMP.value(var3) - sp.ext[:options][name][7]
+                            value = jvalue(var3) - sp.ext[:options][name][7]
                         else
                             var3 =
                                 jmodel.master_problem.ext[:expansions][node][name][i]
                             var4 =
                                 jmodel.master_problem.ext[:expansions][prev][name][i]
-                            value = JuMP.value(var3) - JuMP.value(var4)
+                            value = jvalue(var3) - jvalue(var4)
                         end
                     else
                         con_obj = constraint_object(
@@ -1039,16 +1071,16 @@ function fix_expansions(jmodel::JuDGEModel, force_match::Bool)
                                 jmodel.master_problem.ext[:expansions][prev][name][i]
                             if var3 in keys(con_obj.func.terms)
                                 value +=
-                                    JuMP.value(var3) * -con_obj.func.terms[var3]
+                                    jvalue(var3) * -con_obj.func.terms[var3]
                             end
                         end
                     end
 
                     if haskey(slacks[i], 1)
-                        value -= JuMP.value(slacks[i][1])
+                        value -= jvalue(slacks[i][1])
                     end
                     if haskey(slacks[i], 2)
-                        value += JuMP.value(slacks[i][2])
+                        value += jvalue(slacks[i][2])
                     end
 
                     if sp.ext[:options][name][4] ∈ [:Bin, :Int]
@@ -1086,13 +1118,13 @@ function fix_expansions(jmodel::JuDGEModel, force_match::Bool)
                     if prev === nothing
                         var3 =
                             jmodel.master_problem.ext[:expansions][node][name]
-                        value = JuMP.value(var3) - sp.ext[:options][name][7]
+                        value = jvalue(var3) - sp.ext[:options][name][7]
                     else
                         var3 =
                             jmodel.master_problem.ext[:expansions][node][name]
                         var4 =
                             jmodel.master_problem.ext[:expansions][prev][name]
-                        value = JuMP.value(var3) - JuMP.value(var4)
+                        value = jvalue(var3) - jvalue(var4)
                     end
                 else
                     con_obj = constraint_object(
@@ -1102,17 +1134,16 @@ function fix_expansions(jmodel::JuDGEModel, force_match::Bool)
                         var3 =
                             jmodel.master_problem.ext[:expansions][prev][name]
                         if var3 in keys(con_obj.func.terms)
-                            value +=
-                                JuMP.value(var3) * -con_obj.func.terms[var3]
+                            value += jvalue(var3) * -con_obj.func.terms[var3]
                         end
                     end
                 end
 
                 if haskey(slacks, 1)
-                    value -= JuMP.value(slacks[1])
+                    value -= jvalue(slacks[1])
                 end
                 if haskey(slacks, 2)
-                    value += JuMP.value(slacks[2])
+                    value += jvalue(slacks[2])
                 end
 
                 if sp.ext[:options][name][4] ∈ [:Bin, :Int]

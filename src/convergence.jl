@@ -58,13 +58,13 @@ struct ConvergenceState
 end
 
 """
-Termination(;abstol::Float64=10^-9,
-            reltol::Float64=10^-9,
-            rlx_abstol::Float64=10^-9,
-            rlx_reltol::Float64=10^-9,
-            time_limit::Float64=Inf,
+Termination(;abstol::Real=10^-9,
+            reltol::Real=10^-9,
+            rlx_abstol::Real=10^-9,
+            rlx_reltol::Real=10^-9,
+            time_limit::Real=Inf,
             max_iter::Int=typemax(Int),
-            inttol::Float64=10^-8,
+            inttol::Real=10^-8,
             allow_frac::Symbol=:binary_solve)
 
 Define the stopping conditions for `JuDGE.solve()` / `JuDGE.branch_and_price()`.
@@ -96,23 +96,23 @@ Define the stopping conditions for `JuDGE.solve()` / `JuDGE.branch_and_price()`.
    Termination(abstol=10^-3,inttol=10^-6)
 """
 mutable struct Termination
-    abstol::Float64
-    reltol::Float64
-    rlx_abstol::Float64
-    rlx_reltol::Float64
-    time_limit::Float64
+    abstol::Real
+    reltol::Real
+    rlx_abstol::Real
+    rlx_reltol::Real
+    time_limit::Real
     max_iter::Int
-    inttol::Float64
+    inttol::Real
     allow_frac::Symbol
 
     function Termination(;
-        abstol::Float64 = 10^-9,
-        reltol::Float64 = 10^-9,
-        rlx_abstol::Float64 = 10^-9,
-        rlx_reltol::Float64 = 10^-9,
-        time_limit::Float64 = Inf,
+        abstol::Real = 10^-9,
+        reltol::Real = 10^-9,
+        rlx_abstol::Real = 10^-9,
+        rlx_reltol::Real = 10^-9,
+        time_limit::Real = Inf,
         max_iter::Int = typemax(Int),
-        inttol::Float64 = 10^-8,
+        inttol::Real = 10^-8,
         allow_frac::Symbol = :binary_solve,
     )
         if allow_frac ∉ [
@@ -220,6 +220,57 @@ function display(cs::ConvergenceState; relaxation::Bool = true)
     else
         println("*")
     end
+end
+
+function displayBP(
+    UB::Float64,
+    LB::Float64,
+    time::Float64,
+    iter::Int,
+    total::Int,
+)
+    print("")
+
+    num = floor(Int, log10(iter)) + floor(Int, log10(total))
+    spaces = " "
+    for i in 1:(8-num)
+        spaces *= " "
+    end
+    print(" $(iter) of $(total)$spaces| ")
+
+    if UB == Inf
+        print("          ")
+    elseif UB >= 0
+        print(" ")
+    end
+    Printf.@printf("%e ", UB)
+
+    if LB == -Inf
+        print("         ")
+    elseif LB >= 0
+        print(" ")
+    end
+    Printf.@printf("%e  |  ", LB)
+
+    temp1 = UB - LB
+    temp2 = (UB - LB) / LB
+
+    if temp1 == Inf
+        print("          ")
+    elseif temp1 >= 0
+        print(" ")
+    end
+    Printf.@printf("%e   ", temp1)
+
+    if temp2 == Inf || isnan(temp2)
+        print("          ")
+    elseif temp2 >= 0
+        print(" ")
+    end
+    Printf.@printf("%e  |   ", temp2)
+
+    Printf.@printf("        0  | %9.3f", time)
+    return println("")
 end
 
 function InitialConvergenceState()

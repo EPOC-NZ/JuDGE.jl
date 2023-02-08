@@ -7,6 +7,8 @@ function build_master(
     risk::Union{Risk,Vector{Risk}},
     sideconstraints,
 )
+    all_vars = Dict{AbstractTree,Any}()
+
     if typeof(solver) <: Tuple
         model = Model(solver[1])
     else
@@ -97,6 +99,8 @@ function build_master(
     end
 
     for (node, sp) in sub_problems
+        all_vars[node] = copy(sp.obj_dict)
+
         if typeof(node) == Leaf
             push!(leafs, node)
         end
@@ -157,7 +161,7 @@ function build_master(
                     )
                 end
             end
-            sp.ext[:all_vars][Symbol(string(name, "_master"))] =
+            all_vars[node][Symbol(string(name, "_master"))] =
                 model.ext[:expansions][node][name]
         end
     end
@@ -245,7 +249,7 @@ function build_master(
             if typeof(variable) <: AbstractArray
                 model.ext[:coverconstraint][node][name] = Dict()
                 model.ext[:cover_slacks][node][name] = Dict()
-                sp.ext[:all_vars][Symbol(string(name, "_cumulative"))] = Dict()
+                all_vars[node][Symbol(string(name, "_cumulative"))] = Dict()
                 for i in get_keys(variable)
                     if sp.ext[:options][name][1] == :cumulative
                         if length(interval) != 0
@@ -267,7 +271,7 @@ function build_master(
                                 model.ext[:expansions][node.parent][name][i]
                         end
                     end
-                    sp.ext[:all_vars][Symbol(string(name, "_cumulative"))][key_to_tuple(
+                    all_vars[node][Symbol(string(name, "_cumulative"))][key_to_tuple(
                         i,
                     )] = copy(expr)
 
@@ -303,7 +307,7 @@ function build_master(
                     else
                         expr = 0
                     end
-                    sp.ext[:all_vars][Symbol(string(name, "_cumulative"))] =
+                    all_vars[node][Symbol(string(name, "_cumulative"))] =
                         copy(expr)
                 elseif sp.ext[:options][name][1] == :state
                     if node.parent === nothing
@@ -489,7 +493,7 @@ function build_master(
 
     set_objective_function(model, objective_fn)
 
-    return model
+    return model, all_vars
 end
 
 function solve_master_binary(
@@ -543,6 +547,15 @@ function solve_master_binary(
         optimize!(judge.master_problem)
     end
     return current
+end
+
+function update_best_integer!(judge::JuDGEModel, warm_starts::Bool)
+    vars = all_variables(judge.master_problem)
+    solution = value.(vars)
+    judge.ext[:best_integer_solution] = Dict(zip(vars, solution))
+    if warm_starts
+        set_start_value.(vars, solution)
+    end
 end
 
 function solve_binary(
@@ -643,10 +656,7 @@ function solve_binary(
         obj = objective_value(judge.master_problem)
         if obj < judge.bounds.UB
             judge.bounds.UB = obj
-            if warm_starts
-                vars = all_variables(judge.master_problem)
-                set_start_value.(vars, JuMP.value.(vars))
-            end
+            update_best_integer!(judge::JuDGEModel, warm_starts)
         end
         return true
     else
