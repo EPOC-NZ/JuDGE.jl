@@ -552,10 +552,7 @@ end
 function update_best_integer!(judge::JuDGEModel, warm_starts::Bool)
     vars = all_variables(judge.master_problem)
     solution = value.(vars)
-    judge.ext[:best_integer_solution] = Dict(zip(vars, solution))
-    if warm_starts
-        set_start_value.(vars, solution)
-    end
+    return judge.ext[:best_integer_solution] = Dict(zip(vars, solution))
 end
 
 function solve_binary(
@@ -648,6 +645,14 @@ function solve_binary(
         mp_callback(judge, abstol, reltol)
         printright("Initialising")
     end
+
+    if warm_starts
+        set_start_value.(
+            keys(judge.ext[:best_integer_solution]),
+            values(judge.ext[:best_integer_solution]),
+        )
+    end
+
     optimize!(judge.master_problem)
     status = termination_status(judge.master_problem)
     if status != MOI.INFEASIBLE_OR_UNBOUNDED &&

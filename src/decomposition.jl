@@ -513,6 +513,10 @@ function solve(
     remove_branch_constraints!(judge)
     b_con = add_branch_constraints!(judge)
 
+    if warm_starts
+        judge.ext[:sp_sol] = Dict{AbstractTree,Dict{VariableRef,Float64}}()
+    end
+
     optimize!(judge.master_problem)
     status = termination_status(judge.master_problem)
 
@@ -563,6 +567,15 @@ function solve(
                     )
                 end
 
+                if warm_starts
+                    try
+                        vars = keys(judge.ext[:sp_sol][node])
+                        solution = value(judge.ext[:sp_sol][node])
+                        set_start_value.(vars, solution)
+                    catch
+                    end
+                end
+
                 optimize!(sp)
 
                 if termination_status(sp) ∉
@@ -578,12 +591,15 @@ function solve(
                     )
                     exit_flag = :sp_infeasible
                     @goto terminate
+                elseif warm_starts
+                    try
+                        vars = JuMP.all_variables(sp)
+                        judge.ext[:sp_sol][node] =
+                            Dict(zip(vars, JuMP.value.(vars)))
+                    catch
+                    end
+                    #set_start_value.(vars, solution)
                 end
-                # if warm_starts
-                #     vars = all_variables(sp)
-                #     solution = JuMP.value.(vars)
-                #     set_start_value.(vars, solution)
-                # end
             end
             if verbose == 2
                 overprint("")
@@ -634,6 +650,7 @@ function solve(
                     end
                 end
             end
+
             if verbose == 2
                 overprint("Solving master problem")
                 optimize!(judge.master_problem)

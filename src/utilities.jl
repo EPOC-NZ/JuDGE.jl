@@ -179,7 +179,16 @@ end
 
 function key_to_string(key::Union{Int,Tuple,Symbol,AbstractString})
     #return replace(string(key), ")" => "", "(" => "", "\"" => "", ", " => ",") # needs Julia 1.7
-    str = replace(string(key), ")" => "")
+    if typeof(key) <: Tuple
+        temp = String[]
+        for k in key
+            push!(temp, string(k))
+        end
+        str = string(Tuple(temp))
+    else
+        str = string(key)
+    end
+    str = replace(str, ")" => "")
     str = replace(str, "(" => "")
     str = replace(str, "\"" => "")
     return replace(str, ", " => ",")
@@ -562,14 +571,15 @@ function solution_to_dictionary(
     model::Union{JuDGEModel,DetEqModel};
     prefix::String = "",
 )
-    function judge_value(var::VariableRef)
-        if var.model == model.master_problem
+    function judge_value(var::Union{AffExpr,VariableRef})
+        # TODO AffExpr values should be those from the best integer solution
+        if typeof(var) == VariableRef && var.model == model.master_problem
             return model.ext[:best_integer_solution][var]
         else
             return JuMP.value(var)
         end
     end
-    function jvalue(var::VariableRef)
+    function jvalue(var::Union{AffExpr,VariableRef})
         return typeof(model) == JuDGEModel &&
                haskey(model.ext, :best_integer_solution) ? judge_value(var) :
                JuMP.value(var)
@@ -584,7 +594,7 @@ function solution_to_dictionary(
 
         for (var_group, vars) in var_groups
             sym = Symbol(prefix * string(var_group))
-            if typeof(vars) == VariableRef
+            if typeof(vars) <: Union{VariableRef,AffExpr}
                 solution[node][sym] = jvalue(vars)
             elseif typeof(vars) <: AbstractArray{VariableRef}
                 # skip = false
@@ -623,13 +633,15 @@ function solution_to_dictionary(
                 end
 
                 for key in keys(vars)
-                    if typeof(vars[key]) == VariableRef
-                        strkey = key_to_string(key_to_tuple(key))
-                        # println(strkey)
-                        # println(vars[key])
+                    strkey = key_to_string(key_to_tuple(key))
+                    if typeof(vars[key]) <: Union{AffExpr,VariableRef}
                         solution[node][sym][strkey] = jvalue(vars[key])
+                    elseif typeof(vars[key]) <: Real
+                        solution[node][sym][strkey] = vars[key]
                     end
                 end
+            elseif typeof(vars) <: Real
+                solution[node][sym] = vars
             end
         end
 
