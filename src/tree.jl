@@ -265,7 +265,15 @@ for a node of the tree, indexed by the Symbols.
 """
 function visualize_tree(
     some_tree::AbstractTree,
-    data::Dict{AbstractTree,Dict{Symbol,Any}};
+    data::Dict{AbstractTree,Dict{Symbol,Any}} = Dict(
+        zip(
+            collect(some_tree),
+            [
+                Dict(zip([:index], Any[float(i)])) for
+                i in eachindex(collect(some_tree))
+            ],
+        ),
+    );
     scale_edges = nothing,
     scale_nodes::Float64 = 0.0,
     max_size::Float64 = 50.0,

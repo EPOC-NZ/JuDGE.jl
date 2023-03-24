@@ -7,8 +7,6 @@ macro judge_var(model, variable, class, aargs, aakws)
     penalty = nothing
     state_name = :nothing
 
-    vartype = :Con
-
     if length(aargs) == 0
         push!(aargs, :Con)
     end
