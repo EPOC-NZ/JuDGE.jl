@@ -269,7 +269,7 @@ function visualize_tree(
         zip(
             collect(some_tree),
             [
-                Dict(zip([:index], Any[float(i)])) for
+                Dict(zip([:index], Any[i])) for
                 i in eachindex(collect(some_tree))
             ],
         ),
@@ -302,7 +302,7 @@ function visualize_tree(
             if sym == :graph_data || sym == :custom_data
                 continue
             end
-            if typeof(data[node][sym]) == Float64
+            if typeof(data[node][sym]) <: Real
                 if sym ∉ keys(maxdata)
                     maxdata[sym] = data[node][sym]
                     mindata[sym] = data[node][sym]
