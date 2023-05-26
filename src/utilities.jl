@@ -36,7 +36,7 @@ function Base.map(f, hello::JuMP.Containers.DenseAxisArray)
         map(f, hello.data),
         deepcopy(hello.axes),
         deepcopy(hello.lookup),
-        ntuple(n -> Symbol("#$n"), length(hello.axes))
+        ntuple(n -> Symbol("#$n"), length(hello.axes)),
     )
 end
 
